@@ -1,0 +1,25 @@
+Main Campus Discrepancies
+-------------------------
+5a623269acef4a3fdf0adb29
+OAFHS
+5a62330bacef4a3fdf0adb7b
+5a623344acef4a3fdf0adb9b
+WALDRN
+5a6233b5acef4a3fdf0adbdb
+5a6233b8acef4a3fdf0adbdd
+Department of Environmental Health and Safety
+
+West Campus Discrepancies
+-------------------------
+5a62324aacef4a3fdf0adb1a
+5a62324dacef4a3fdf0adb1c
+5a623254acef4a3fdf0adb1f
+
+
+Whitespace Problem Fields
+=========================
+
+- code
+- name
+- address
+- campus

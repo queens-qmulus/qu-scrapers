@@ -1,0 +1,19 @@
+[[source]]
+
+url = "https://pypi.python.org/simple"
+verify_ssl = true
+name = "pypi"
+
+
+[packages]
+
+unidecode = "*"
+"beautifulsoup4" = "*"
+urljoin = "*"
+pendulum = "*"
+pymongo = "*"
+googlemaps = "*"
+
+
+[dev-packages]
+
