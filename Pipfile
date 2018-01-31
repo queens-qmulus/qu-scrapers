@@ -13,6 +13,7 @@ urljoin = "*"
 pendulum = "*"
 pymongo = "*"
 googlemaps = "*"
+selenium = "*"
 
 
 [dev-packages]
