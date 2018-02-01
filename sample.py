@@ -1,11 +1,10 @@
 import time
 import json
 import requests
-
-import asyncio
-from pyppeteer.launcher import launch
+import chromedriver_binary # Adds chromedriver_binary to path
 
 from bs4 import BeautifulSoup
+from selenium import webdriver
 from pymongo import MongoClient
 from urllib.parse import urljoin
 from requests.adapters import HTTPAdapter
@@ -221,16 +220,14 @@ def login_solus_link(res):
 
 # =============== HEADLESS WEB DRIVER APPROACH FOR SOLUS LOGIN  ===============
 
-def init_sample():
-    browser = launch()
-    asyncio.get_event_loop().run_until_complete(start_sample(browser))
-    browser.close()
+def solus_login():
+    chrome_options = Options()
+    chrome_options.add_argument('--headless')
 
-async def start_sample(browser):
-    page = await browser.newPage()
+    driver = webdriver.Chrome()
 
-    await page.goto('https://google.com')
-    await page.screenshot({'path': 'FINAL-TEST.png'})
+    driver.get('https://my.queensu.ca')
+    # TODO: To Be Continued
 
 if __name__ == '__main__':
-    init_sample()
+    solus_login()
