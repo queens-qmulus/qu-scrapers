@@ -2,9 +2,12 @@ import time
 import json
 import requests
 
+import asyncio
+from pyppeteer.launcher import launch
+
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
 from pymongo import MongoClient
+from urllib.parse import urljoin
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
@@ -216,5 +219,18 @@ def login_solus_link(res):
     if link:
         return link.get("href")
 
+# =============== HEADLESS WEB DRIVER APPROACH FOR SOLUS LOGIN  ===============
+
+def init_sample():
+    browser = launch()
+    asyncio.get_event_loop().run_until_complete(start_sample(browser))
+    browser.close()
+
+async def start_sample(browser):
+    page = await browser.newPage()
+
+    await page.goto('https://google.com')
+    await page.screenshot({'path': 'FINAL-TEST.png'})
+
 if __name__ == '__main__':
-    login_to_solus_sample()
+    init_sample()

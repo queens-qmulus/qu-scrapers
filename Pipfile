@@ -13,7 +13,9 @@ urljoin = "*"
 pendulum = "*"
 pymongo = "*"
 googlemaps = "*"
+requests = "*"
 selenium = "*"
+chromedriver-binary = "*"
 
 
 [dev-packages]
