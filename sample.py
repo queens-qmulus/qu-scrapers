@@ -5,6 +5,7 @@ import chromedriver_binary # Adds chromedriver_binary to path
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from pymongo import MongoClient
 from urllib.parse import urljoin
 from requests.adapters import HTTPAdapter
@@ -140,8 +141,8 @@ def login_to_solus_sample():
     session = requests_retry_session()
     res = session.get(login_url)
     payload = {
-       'j_username': '12aa100',
-       'j_password': 'Radix124c41+',
+       'j_username': '<NET_ID>',
+       'j_password': '<PASSWORD>',
        'IDButton': '%C2%A0Log+In%C2%A0',
         }
 
@@ -218,7 +219,7 @@ def login_solus_link(res):
     if link:
         return link.get("href")
 
-# =============== HEADLESS WEB DRIVER APPROACH FOR SOLUS LOGIN  ===============
+# =========== HEADLESS BROWSER WEB DRIVER APPROACH FOR SOLUS LOGIN  ===========
 
 def solus_login():
     chrome_options = Options()
@@ -227,7 +228,28 @@ def solus_login():
     driver = webdriver.Chrome()
 
     driver.get('https://my.queensu.ca')
-    # TODO: To Be Continued
+    username_field = driver.find_element_by_id('username')
+    username_field.clear()
+    username_field.send_keys('<NET_ID>')
+
+    password_field = driver.find_element_by_id('password')
+    password_field.clear()
+    password_field.send_keys('<PASSWORD>')
+
+    driver.find_element_by_class_name('form-button').click()
+    driver.find_element_by_link_text('SOLUS').click()
+
+    iframe = driver.find_element_by_xpath("//iframe[@id='ptifrmtgtframe']")
+
+    driver.switch_to_frame(iframe)
+    driver.find_element_by_link_text('Search').click()
+
+    session_cookies = {}
+
+    for cookie in driver.get_cookies():
+        session_cookies[cookie['name']] = cookie['value']
+
+    drive.close()
 
 if __name__ == '__main__':
     solus_login()
