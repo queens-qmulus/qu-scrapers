@@ -237,9 +237,9 @@ def solus_login():
     password_field.send_keys('<PASSWORD>')
 
     driver.find_element_by_class_name('form-button').click()
-    driver.find_element_by_link_text('SOLUS').click()
+    driver.find_element_by_class_name('solus-tab').click()
 
-    iframe = driver.find_element_by_xpath("//iframe[@id='ptifrmtgtframe']")
+    iframe = driver.find_element_by_id('ptifrmtgtframe')
 
     driver.switch_to_frame(iframe)
     driver.find_element_by_link_text('Search').click()
