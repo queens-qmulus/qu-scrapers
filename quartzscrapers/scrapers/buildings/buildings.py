@@ -2,8 +2,8 @@ import time
 import googlemaps
 
 from ..utils import Scraper
+from .helpers import add_default_fields, get_building_coords
 from urllib.parse import urljoin
-from helpers import get_building_coords
 
 
 class Buildings:
@@ -23,15 +23,26 @@ class Buildings:
         campuses = Buildings.get_campuses('campusmap/overall')
 
         for campus in campuses:
-            buildings = Buildings.get_buildings(campus)
+            campus_relative_url = campus.find('a')['href']
+            # pull campus name from relative url, such as /campusmap/west,
+            # which splits by '/' and grab the last value
+            campus_name = campus_relative_url.split('/')[-1]
+            buildings = Buildings.get_buildings(campus_relative_url)
 
             for building in buildings:
                 results = []
-                building_data = Buildings.parse_data(campus, building['href'])
+                building_data = Buildings.parse_data(
+                    campus_relative_url,
+                    building['href']
+                    )
 
                 if building_data:
-                    results.append(add_default_fields(building_data, campus))
-                    Scraper.save_data(results)
+                    results.append(add_default_fields(
+                        building_data, campus_name)
+                        )
+                    # Scraper.save_data(results)
+                    import pdb; pdb.set_trace()
+                    print('LET US LOOK AT OUR DATA NOW')
 
                 Scraper.wait()
 
@@ -46,34 +57,30 @@ class Buildings:
 
 
     @staticmethod
-    def get_buildings(campus):
-        campus_relative_url = campus.find('a')['href']
-
-        # pull campus name from relative link, such as /campusmap/west,
-        # which splits by '/' and grab the last value
-        campus_name = campus_rel_link.split('/')[-1]
+    def get_buildings(campus_relative_url):
+        campus_name = campus_relative_url.split('/')[-1]
 
         print('Campus: {campus}'.format(campus=campus_name.upper()))
         print('========================\n')
 
-        campus_url = urljoin(Buildings.host, campus_rel_link)
+        campus_url = urljoin(Buildings.host, campus_relative_url)
         soup = Scraper.get_url(campus_url)
-        campus_map = soup.find('nap')
+        campus_map = soup.find('map')
         buildings = campus_map.find_all('area')
 
         return buildings
 
 
     @staticmethod
-    def parse_data(campus, building_param):
+    def parse_data(campus_relative_url, building_param):
         print('Building Parameter: {param}'.format(param=building_param))
 
-        building_relative_url = urljoin(campus, building_name)
+        building_relative_url = urljoin(campus_relative_url, building_param)
         building_url = urljoin(Buildings.host, building_relative_url)
         soup = Scraper.get_url(building_url)
 
         campus_map = soup.find('map')
-        building = campus_map.find('area', href=param)
+        building = campus_map.find('area', href=building_param)
         building_fields = soup.find_all('div', 'building-field')
 
         # Omit 'Building Code:' from section
@@ -82,7 +89,7 @@ class Buildings:
         address = building_fields[0].find('a').text.strip()
         polygon = building['coords'].split(', ')
 
-        latitude, longitude = Buildings.get_building_coords(address)
+        latitude, longitude = get_building_coords(address)
 
         data = {
             'code': code,
@@ -95,11 +102,3 @@ class Buildings:
         }
 
         return data
-
-
-    @staticmethod
-    def get_building_coords(address):
-        prefix = ', Kingston, ON'
-        geocoords = gmaps.geocode(address + prefix)[0]['geometry']['location']
-
-        return geocoords['lat'], geocoords['lng']

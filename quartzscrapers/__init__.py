@@ -1,1 +1,1 @@
-from .scrapers.buildings import Buildings
+from quartzscrapers.scrapers.buildings import Buildings
