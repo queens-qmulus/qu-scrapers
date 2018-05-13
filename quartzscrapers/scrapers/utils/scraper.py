@@ -1,3 +1,4 @@
+import time
 import requests
 
 from retrying import retry
@@ -52,5 +53,5 @@ class Scraper:
 
     @staticmethod
     def wait(seconds=2):
-        print('Waiting {seconds} seconds...'.format(seconds=seconds))
+        print('Waiting {seconds} seconds...\n'.format(seconds=seconds))
         time.sleep(seconds)
