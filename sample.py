@@ -3,6 +3,8 @@ import json
 import requests
 import chromedriver_binary # Adds chromedriver_binary to path
 
+from retrying import retry
+
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -94,24 +96,8 @@ def write_to_mongodb_sample():
     print('\nDONE')
 
 
-def retry_sample():
-    t0 = time.time()
-    try:
-        response = requests_retry_session().get(
-            'http://localhost:9999',
-        )
-    except Exception as x:
-        print('It failed :(', x.__class__.__name__)
-        print('More Details:', x)
-    else:
-        print('It eventually worked', response.status_code)
-    finally:
-        t1 = time.time()
-        print('Took', t1 - t0, 'seconds')
-
-
 def requests_retry_session(
-    retries=3,
+    retries=5,
     backoff_factor=0.3,
     status_forcelist=(500, 502, 504),
     session=None
@@ -133,8 +119,39 @@ def requests_retry_session(
     return session
 
 
+def retry_sample():
+    t0 = time.time()
+    try:
+        response = requests_retry_session().get(
+            'http://httpbin.org/status/500',
+        )
+    except Exception as x:
+        print('It failed :(', x.__class__.__name__)
+        print('More Details:', x)
+    else:
+        print('It eventually worked', response.status_code)
+    finally:
+        t1 = time.time()
+        print('Took', t1 - t0, 'seconds')
+
+
+@retry(wait_exponential_multiplier=1000, wait_exponential_max=10000)
+def retry_sample_2():
+    t0 = time.time()
+    try:
+        response = requests_retry_session().get(
+            'http://httpbin.org/status/500',
+        )
+    except Exception as x:
+        print('It failed :(', x.__class__.__name__)
+        print('More Details:', x)
+    else:
+        print('It eventually worked', response.status_code)
+    finally:
+        t1 = time.time()
+        print('Took', t1 - t0, 'seconds')
+
 def login_to_solus_sample():
-    import pdb; pdb.set_trace()
     login_url = "https://my.queensu.ca"
     continue_url = "SAML2/Redirect/SSO"
 

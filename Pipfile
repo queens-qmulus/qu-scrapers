@@ -1,12 +1,9 @@
 [[source]]
-
 url = "https://pypi.python.org/simple"
 verify_ssl = true
 name = "pypi"
 
-
 [packages]
-
 unidecode = "*"
 "beautifulsoup4" = "*"
 urljoin = "*"
@@ -16,7 +13,6 @@ googlemaps = "*"
 requests = "*"
 selenium = "*"
 chromedriver-binary = "*"
-
+retrying = "*"
 
 [dev-packages]
-
