@@ -37,9 +37,7 @@ class Buildings:
                         Scraper.save_data(results, 'buildings')
 
                 except Exception as ex:
-                    print('{name} in scrape(): {ex}'.format(
-                        name=ex.__class__.__name__, ex=ex
-                        ))
+                    Scraper.handle_error(ex, 'scrape')
 
                 Scraper.wait()
 

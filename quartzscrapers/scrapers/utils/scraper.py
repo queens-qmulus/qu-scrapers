@@ -56,7 +56,7 @@ class Scraper:
     @staticmethod
     def handle_error(ex, func_name):
         # TODO: Test validity
-        print('{name} in {func}(): {ex}'.format(
+        print('{name} in {func_name}(): {ex}'.format(
             name=ex.__class__.__name__,
             func_name=func_name,
             ex=ex

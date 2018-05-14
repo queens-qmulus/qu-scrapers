@@ -48,16 +48,12 @@ class GazetteScraper:
                         Scraper.wait()
 
                     except Exception as ex:
-                        print('{name} in scrape(): {ex}'.format(
-                            name=ex.__class__.__name__, ex=ex
-                            ))
+                        Scraper.handle_error(ex, 'scrape')
 
                 Scraper.save_data(results, collection)
 
             except Exception as ex:
-                print('{name} in scrape(): {ex}'.format(
-                    name=ex.__class__.__name__, ex=ex
-                    ))
+                Scraper.handle_error(ex, 'scrape')
 
     @staticmethod
     def get_num_pages(relative_url):
