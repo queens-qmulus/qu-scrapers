@@ -2,15 +2,13 @@ import re
 import pendulum
 from urllib.parse import urljoin
 
-# from .news import News
-# from quartzscrapers.scrapers.news_temp.news import News
 from ..utils import Scraper
 from .helpers import add_default_fields
 
 
 class JournalScraper:
     '''
-    Scraper subclass for the Queen's Journal news source.
+    Scraper for Queen's Journal news source.
     '''
 
     host = 'http://www.queensjournal.ca'
@@ -126,7 +124,7 @@ class JournalScraper:
         articles per page.
 
         Returns:
-            List[bs4.element.Tag]
+            List[String]
         '''
         year_url = urljoin(JournalScraper.host, relative_url)
         soup =  Scraper.get_url(year_url, params=dict(page=page_index))

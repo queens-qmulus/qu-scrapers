@@ -2,15 +2,14 @@ from urllib.parse import urljoin
 
 from ..utils import Scraper
 from .journal import JournalScraper
-    # GazetteScraper,
-    # AlumniReviewScraper,
-    # SmithMagazineScraper,
-    # JurisDictionScraper,
-    # )
+from .gazette import GazetteScraper
+# from .alumnireview import AlumniReviewScraper
+# from .smith_magazine import SmithMagazineScraper
+# from .jurisdiction import JurisDictionScraper
 
 class News:
     '''
-    Scraper superclass for Queen's news articles.
+    Scraper class for Queen's news articles.
 
     Queen's consists of several sources for news. As such, several subclasses
     exist to aggregate and normalize information into this superclass.
@@ -26,7 +25,7 @@ class News:
 
     news_sources = [
         JournalScraper,
-        # GazetteScraper,
+        GazetteScraper,
         # AlumniReviewScraper,
         # SmithMagazineScraper,
         # JurisDictionScraper,
@@ -46,5 +45,3 @@ class News:
             print('Done {source} scraper\n'.format(source=news_source.slug))
 
         print('Completed news sources')
-
-

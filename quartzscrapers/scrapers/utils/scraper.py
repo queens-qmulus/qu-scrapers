@@ -51,3 +51,13 @@ class Scraper:
     def wait(seconds=2):
         print('Waiting {seconds} seconds...\n'.format(seconds=seconds))
         time.sleep(seconds)
+
+
+    @staticmethod
+    def handle_error(ex, func_name):
+        # TODO: Test validity
+        print('{name} in {func}(): {ex}'.format(
+            name=ex.__class__.__name__,
+            func_name=func_name,
+            ex=ex
+            ))

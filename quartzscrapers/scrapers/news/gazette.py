@@ -1,78 +1,124 @@
-import time
 import pendulum
-
-from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from utils import add_default_fields, save_data, requests_retry_session
 
-base_url = 'http://www.queensu.ca'
+# from .news import News
+# from quartzscrapers.scrapers.news_temp.news import News
+from ..utils import Scraper
+from .helpers import add_default_fields
 
-def scrape_all():
-    url = urljoin(base_url, 'gazette/stories/all')
 
-    try:
-        res = requests_retry_session().get(url, timeout=10)
-        soup = BeautifulSoup(res.text, 'html.parser')
+class GazetteScraper:
+    '''
+    Scraper for Queen's Gazette news source.
+    '''
+
+    host = 'http://www.queensu.ca'
+    slug = 'gazette'
+
+    @staticmethod
+    def scrape(collection='articles'):
+        '''Parse information custom to Queen's Gazette'''
+
+        num_pages = GazetteScraper.get_num_pages('gazette/stories/all')
+
+        print('Total Pages: {num_pages}'.format(num_pages=num_pages))
+        print('===================================\n')
+
+        for page_index in range(num_pages):
+            print('Page {page_num}'.format(page_num=page_index))
+            print('---------')
+            results = []
+
+            try:
+                article_rel_urls = GazetteScraper.get_article_rel_urls(
+                    'gazette/stories/all', page_index
+                    )
+
+                for article_rel_url in article_rel_urls:
+                    try:
+                        article_data = GazetteScraper.parse_data(
+                            article_rel_url
+                            )
+
+                        if article_data:
+                            results.append(
+                                add_default_fields(article_data)
+                                )
+
+                        Scraper.wait()
+
+                    except Exception as ex:
+                        print('{name} in scrape(): {ex}'.format(
+                            name=ex.__class__.__name__, ex=ex
+                            ))
+
+                Scraper.save_data(results, collection)
+
+            except Exception as ex:
+                print('{name} in scrape(): {ex}'.format(
+                    name=ex.__class__.__name__, ex=ex
+                    ))
+
+    @staticmethod
+    def get_num_pages(relative_url):
+        '''
+        Request URL for all archived articles and parse number of pages to
+        crawl.
+
+        Returns:
+            Int
+        '''
+
+        stories_all_url = urljoin(GazetteScraper.host, relative_url)
+        soup = Scraper.get_url(stories_all_url)
 
         page_link = soup.find('li', 'pager-last').find('a')['href']
 
         # get last two digits from link of last page, i.e;
-        # '/story/archive/news/2017/?page=13' results in 13
+        # '/story/archive/news/2012/?page=13' results in 13
         index = page_link.rfind('=')
         num_pages = int(page_link[(index + 1):]) + 1 # +1 to go from 0 to n
 
-        crawl_pages(url, num_pages)
+        return num_pages
 
-    except Exception as ex:
-        print('Error in scrape_all(): {ex}'.format(ex=ex))
+    @staticmethod
+    def get_article_rel_urls(relative_url, page_index):
+        '''
+        Gets list of relative URLs for articles. Queen's Gazette displays
+        approximately 16 articles per page.
 
+        Returns:
+            List[String]
+        '''
 
-def crawl_pages(url, num_pages):
-    print('Total Pages: {num_pages}'.format(num_pages=num_pages))
-    print('===================================\n')
+        article_url = urljoin(GazetteScraper.host, relative_url)
+        soup =  Scraper.get_url(article_url, params=dict(page=page_index))
 
-    for i in range(num_pages):
-        results = []
+        articles = soup.find_all('div', 'story-title')
+        article_rel_urls = [article.find('a')['href'] for article in articles]
 
-        print('Page {page_num}'.format(page_num=i))
-        print('---------')
-
-        try:
-            res = requests_retry_session().get(url, params=dict(page=i), timeout=10)
-            soup = BeautifulSoup(res.text, 'html.parser')
-
-            articles = soup.find_all('div', 'story-title')
-
-            for article in articles:
-                article_link = article.find('a')['href']
-                article_data = scrape_article(article_link)
-
-                if article_data:
-                    results.append(article_data)
-
-                print('Waiting 2 seconds...')
-                time.sleep(2)
-
-            save_data(results, 'articles_gazette')
-
-        except Exception as ex:
-            print('Error in crawl_pages(): {ex}'.format(ex=ex))
-            continue
+        return article_rel_urls
 
 
-def scrape_article(url):
-    url = urljoin(base_url, url)
-    data = {}
+    @staticmethod
+    def parse_data(article_rel_url):
+        '''
+        Parse data from article page tags
 
-    print('Article: {url}'.format(url=url))
+        Returns:
+            Object
+        '''
 
-    try:
-        res = requests_retry_session().get(url, timeout=10)
-        soup = BeautifulSoup(res.text, 'html.parser')
+        article_url = urljoin(GazetteScraper.host, article_rel_url)
+        soup = Scraper.get_url(article_url)
 
-        # Find publish date and convert to ISO time standard
+        print('Article: {url}'.format(url=article_url))
+
+        title = soup.find('h1', 'title').text.strip()
+
+       # Find publish date and convert to ISO time standard
         published = soup.find('div', 'story-pub-date').text.strip()
-        published_iso = pendulum.parse(published).isoformat()
+        published_iso = pendulum.parse(published, strict=False).isoformat()
 
         # Queen's gazette doesn't list authors, they either show an author
         # or show a team of authors under a team name. Anomalies include
@@ -80,32 +126,20 @@ def scrape_article(url):
         # Gazette also includes author title such as "Alex, Communications".
         # Remove job title, and split by ' with ' to create authors array
         authors_raw = soup.find('div', 'story-byline').text.strip()[3:].split(',')[0]
-        authors = authors_raw
+        authors = authors_raw.split(' with ') if authors_raw else []
 
-        content_raw = soup.find('div', 'story-body')
+        content = soup.find('div', 'story-body').text.strip()
+        content_raw = str(soup.find('div', 'story-body'))
 
-        data = add_default_fields({
-            'title': soup.find('h1', 'title').text.strip(),
-            'link': url,
+        data = {
+            'title': title,
+            'slug': GazetteScraper.slug,
+            'link': article_url,
             'published': published_iso,
             'updated': None,
-            'authors': authors.split(' with ') if authors else [],
-            'content': content_raw.text.strip(),
-            'contentRaw': str(content_raw),
-            },
-            'gazette'
-            )
+            'authors': authors,
+            'content': content,
+            'contentRaw': content_raw,
+            }
 
         return data
-
-    except Exception as ex:
-        print('Error in scrape_article(): {ex}'.format(ex=ex))
-        return
-
-
-if __name__ == '__main__':
-    start_time = time.time()
-    scrape_all()
-    total_time = time.time() - start_time
-
-    print('Total scrape took {seconds} s.\n'.format(seconds=total_time))
