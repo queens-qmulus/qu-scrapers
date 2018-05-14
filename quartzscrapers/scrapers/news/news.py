@@ -36,7 +36,15 @@ class News:
     def scrape():
         '''Update database records for news scraper'''
 
-        for news_source in news_sources:
-            news_source.scrape()
+        for news_source in News.news_sources:
+            print('Starting {source} scraper'.format(source=news_source.slug))
+            print('==========================================\n')
+
+            # TODO: Remove collection param when completed all news scrapers
+
+            news_source.scrape('articles_{slug}'.format(slug=news_source.slug))
+            print('Done {source} scraper\n'.format(source=news_source.slug))
+
+        print('Completed news sources')
 
 

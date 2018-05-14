@@ -49,7 +49,7 @@ class JournalScraper:
                             year_rel_url, page_index
                             )
 
-                        # Scrape each article for each page
+                        # Scrape each article on a page
                         for article_rel_url in article_rel_urls:
                             try:
                                 article_data = JournalScraper.parse_data(
