@@ -27,19 +27,15 @@ class Scraper:
     @staticmethod
     @retry(wait_exponential_multiplier=1000, wait_exponential_max=10000)
     def get_url(url, params=None, cookies=None, headers=None, timeout=10):
-        try:
-            response = requests.get(
-                url,
-                params=params,
-                cookies=cookies,
-                headers=headers or Scraper.headers,
-                timeout=timeout,
-                )
+        response = Scraper.session.get(
+            url,
+            params=params,
+            cookies=cookies,
+            headers=headers or Scraper.headers,
+            timeout=timeout,
+            )
 
-            return BeautifulSoup(response.text, 'html.parser')
-        except Exception as ex:
-            print('Error in get_url():', ex.__class__.__name__)
-            print('Error details:', ex)
+        return BeautifulSoup(response.text, 'html.parser')
 
 
     @staticmethod
