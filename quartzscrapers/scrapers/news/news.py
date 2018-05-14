@@ -3,7 +3,7 @@ from urllib.parse import urljoin
 from ..utils import Scraper
 from .journal import JournalScraper
 from .gazette import GazetteScraper
-# from .alumnireview import AlumniReviewScraper
+from .alumnireview import AlumniReviewScraper
 # from .smith_magazine import SmithMagazineScraper
 # from .jurisdiction import JurisDictionScraper
 
@@ -26,7 +26,7 @@ class News:
     news_sources = [
         JournalScraper,
         GazetteScraper,
-        # AlumniReviewScraper,
+        AlumniReviewScraper,
         # SmithMagazineScraper,
         # JurisDictionScraper,
         ]

@@ -1,8 +1,6 @@
 import pendulum
 from urllib.parse import urljoin
 
-# from .news import News
-# from quartzscrapers.scrapers.news_temp.news import News
 from ..utils import Scraper
 from .helpers import add_default_fields
 
@@ -121,7 +119,9 @@ class GazetteScraper:
         # showing two authors using 'with', such as 'By John with Alex'.
         # Gazette also includes author title such as "Alex, Communications".
         # Remove job title, and split by ' with ' to create authors array
-        authors_raw = soup.find('div', 'story-byline').text.strip()[3:].split(',')[0]
+        authors_raw = (
+            soup.find('div', 'story-byline').text.strip()[3:].split(',')[0]
+            )
         authors = authors_raw.split(' with ') if authors_raw else []
 
         content = soup.find('div', 'story-body').text.strip()
@@ -132,7 +132,7 @@ class GazetteScraper:
             'slug': GazetteScraper.slug,
             'link': article_url,
             'published': published_iso,
-            'updated': None,
+            'updated': published_iso,
             'authors': authors,
             'content': content,
             'contentRaw': content_raw,
