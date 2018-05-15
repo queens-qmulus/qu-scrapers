@@ -4,7 +4,7 @@ from ..utils import Scraper
 from .journal import JournalScraper
 from .gazette import GazetteScraper
 from .alumnireview import AlumniReviewScraper
-# from .smith_magazine import SmithMagazineScraper
+from .smith_magazine import SmithMagazineScraper
 # from .jurisdiction import JurisDictionScraper
 
 class News:
@@ -24,10 +24,10 @@ class News:
     '''
 
     news_sources = [
-        JournalScraper,
-        GazetteScraper,
-        AlumniReviewScraper,
-        # SmithMagazineScraper,
+        # JournalScraper,
+        # GazetteScraper,
+        # AlumniReviewScraper,
+        SmithMagazineScraper,
         # JurisDictionScraper,
         ]
 
