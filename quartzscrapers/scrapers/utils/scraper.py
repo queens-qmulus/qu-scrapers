@@ -40,7 +40,6 @@ class Scraper:
 
     @staticmethod
     def save_data(data, collection):
-        # TODO: Add env variables for Mongo credentials
         client = MongoClient('localhost', 27017)
         db = client['knowledge']
 
@@ -55,7 +54,6 @@ class Scraper:
 
     @staticmethod
     def handle_error(ex, func_name):
-        # TODO: Test validity
         print('{name} in {func_name}(): {ex}'.format(
             name=ex.__class__.__name__,
             func_name=func_name,

@@ -40,7 +40,8 @@ class News:
             print('Starting {source} scraper'.format(source=news_source.slug))
             print('==================================\n')
 
-            # TODO: Remove collection param when completed all news scrapers
+            # TODO: Remove collection param when completed data validity of
+            # all news scrapers
 
             start_time = time.time()
             news_source.scrape('articles_{slug}'.format(slug=news_source.slug))
