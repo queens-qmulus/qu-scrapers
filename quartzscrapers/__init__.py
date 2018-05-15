@@ -6,5 +6,5 @@ from quartzscrapers.scrapers.news import (
     GazetteScraper,
     AlumniReviewScraper,
     SmithMagazineScraper,
-    # JurisDictionScraper,
+    JurisDictionScraper,
     )

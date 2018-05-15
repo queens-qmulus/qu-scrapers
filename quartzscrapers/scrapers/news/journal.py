@@ -38,7 +38,7 @@ class JournalScraper:
 
                 # Crawl each page for each year
                 for page_index in range(num_pages):
-                    print('Page {page_num}'.format(page_num=page_index))
+                    print('Page {page_num}'.format(page_num=(page_index + 1)))
                     print('---------')
                     results = []
 
@@ -144,7 +144,7 @@ class JournalScraper:
         updated_iso = None
         regex_str = 'Last Updated: '
 
-        article_url = urljoin(JournalScraper.host, article_rel_url)
+        article_url = urljoin(JournalScraper.host, article_rel_url)[:-1]
         soup = Scraper.get_url(article_url)
 
         print('Article: {url}'.format(url=article_url))
@@ -175,7 +175,7 @@ class JournalScraper:
         data = {
             'title': title,
             'slug': JournalScraper.slug,
-            'link': article_url[:-1],
+            'link': article_url,
             'published': published_iso,
             'updated': updated_iso,
             'authors': authors,

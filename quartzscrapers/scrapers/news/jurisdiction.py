@@ -1,125 +1,180 @@
-#  http://www.queensu.ca/gazette/alumnireview/stories
-
-import re
-import time
 import pendulum
-
-from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from utils import add_default_fields, save_data, requests_retry_session
 
-base_url = 'http://www.juris-diction.ca'
-
-def scrape_all():
-    try:
-        res = requests_retry_session().get(base_url, timeout=10)
-        soup = BeautifulSoup(res.text, 'html.parser')
-
-        archive_links = soup.find('div', id='archives-3').find_all('li')
-        links = [link.find('a')['href'] for link in archive_links]
-
-        for link in links:
-            res = requests_retry_session().get(link, timeout=10)
-            soup = BeautifulSoup(res.text, 'html.parser')
-
-            print('ARCHIVE: {link}'.format(link=link))
-            crawl_pages(link, soup)
-
-    except Exception as ex:
-        print('Error in scrape_all(): {ex}'.format(ex=ex))
+from ..utils import Scraper
+from .helpers import add_default_fields
 
 
-def crawl_pages(url, soup):
-    page_num = 1
+class JurisDictionScraper:
+    '''
+        Scraper for Juris Diction news source, Queen's Law Newspaper.
+    '''
 
-    # paginate until we no longer see a 'next' button
-    while soup.find('a', 'next'):
-        print('Page {page_num}\n'.format(page_num=page_num))
-        print('---------')
+    host = 'http://www.juris-diction.ca'
+    slug = 'jurisdiction'
 
-        crawl_articles(soup)
-
-        page_num += 1
-        url = soup.find('a', 'next')['href']
+    @staticmethod
+    def scrape(collection='articles'):
+        '''
+        Parse information custom to Juris Diction.
+        '''
 
         try:
-            res = requests_retry_session().get(url, timeout=10)
-            soup = BeautifulSoup(res.text, 'html.parser')
+            archive_month_urls = JurisDictionScraper.get_archive_month_urls()
+
+            for archive_month_url in archive_month_urls:
+                try:
+                    print('ARCHIVE: {url}\n'.format(url=archive_month_url))
+
+                    archive_page_urls = (
+                        JurisDictionScraper.get_archive_page_urls(
+                            archive_month_url
+                        ))
+
+                    page_num = 1
+
+                    for archive_page_url in archive_page_urls:
+                        results = []
+
+                        try:
+                            archive_page = Scraper.get_url(archive_page_url)
+
+                            print('Page {page_num}'.format(page_num=page_num))
+                            print('-------')
+
+                            article_urls = (
+                                JurisDictionScraper.get_rel_article_urls(
+                                    archive_page
+                                ))
+
+
+                            for article_url in article_urls:
+                                print('Article: {url}'.format(url=article_url))
+
+                                try:
+                                    article_data = (
+                                        JurisDictionScraper.parse_data(
+                                            article_url
+                                        ))
+
+                                    if article_data:
+                                        results.append(article_data)
+
+                                    Scraper.wait()
+
+                                except Exception as ex:
+                                    Scraper.handle_error(ex, 'scrape')
+
+                            Scraper.save_data(results, collection)
+
+                            page_num += 1
+
+                        except Exception as ex:
+                            Scraper.handle_error(ex, 'scrape')
+
+                except Exception as ex:
+                    Scraper.handle_error(ex, 'scrape')
+
         except Exception as ex:
-            print('Error in crawl_pages(): {ex}'.format(ex=ex))
-            continue
-
-    # crawl last page with no 'next' button
-    print('\nPage {page_num}'.format(page_num=page_num))
-    print('---------')
-    crawl_articles(soup)
+            Scraper.handle_error(ex, 'scrape')
 
 
-def crawl_articles(soup):
-    results = []
+    @staticmethod
+    def get_archive_month_urls():
+        '''
+        Request main URL and extract all archived month URLs.
 
-    try:
-        article_section = soup.find('div', 'vw-isotope')
+        Returns:
+            List[String]
+        '''
+
+        soup = Scraper.get_url(JurisDictionScraper.host)
+
+        archives = soup.find('div', id='archives-3').find_all('li')
+        archive_month_urls = [archive.find('a')['href'] for archive in archives]
+
+        return archive_month_urls
+
+
+    @staticmethod
+    def get_archive_page_urls(archive_month_url):
+        '''
+        Requests an archive month's URL and crawls the archive for any
+        additional paginated 'next' URLs, if they exist.
+
+        Returns:
+            List[String]
+        '''
+
+        archive_page_urls = [archive_month_url]
+
+        archive_page = Scraper.get_url(archive_month_url)
+
+        # paginate until we no longer see a 'next' button
+        while archive_page.find('a', 'next'):
+            archive_page_url = archive_page.find('a', 'next')['href']
+            archive_page_urls.append(archive_page_url)
+
+            archive_page = Scraper.get_url(archive_page_url)
+
+        return archive_page_urls
+
+
+    @staticmethod
+    def get_rel_article_urls(archive_page):
+        '''
+        Extract every article's relative URL from the current archive page.
+
+        Returns:
+            List[String]
+        '''
+
+        article_section = archive_page.find('div', 'vw-isotope')
         articles = article_section.find_all('h3', 'vw-post-box-title')
 
-        for article in articles:
-            article_link = article.find('a')['href']
-            article_data = scrape_article(article_link)
+        article_rel_urls = [article.find('a')['href'] for article in articles]
 
-            if article_data:
-                results.append(article_data)
-
-            print('Waiting 2 seconds...')
-            time.sleep(2)
-
-        save_data(results, 'articles_jurisdiction')
-
-    except Exception as ex:
-        print('Error in crawl_pages(): {ex}'.format(ex=ex))
+        return article_rel_urls
 
 
-def scrape_article(url):
-    url = urljoin(base_url, url)
-    data = {}
+    @staticmethod
+    def parse_data(article_rel_url):
+        '''
+        Parse data from article page tags
 
-    print('Article: {url}'.format(url=url))
+        Returns:
+            Object
+        '''
 
-    try:
-        res = requests_retry_session().get(url, timeout=10)
-        soup = BeautifulSoup(res.text, 'html.parser')
+        article_url = urljoin(JurisDictionScraper.host, article_rel_url)[:-1]
+        soup = Scraper.get_url(article_url)
 
-        # Queen's Juris Diction uses HTML5 element 'time', which already 
+        title = soup.find('h1', 'entry-title').text.strip()
+
+        # Queen's Juris Diction uses HTML5 element 'time', which already
         # contains ISO format in 'datetime' attribute
         published_iso = soup.find('time')['datetime']
 
         # Multiple authors are listed with commas, except for last author with
         # 'and' such as 'John, Alex and Jason'.
-        authors = soup.find('a', 'author-name')
-
-        content_raw = soup.find('div', 'vw-post-content')
-
-        data = add_default_fields({
-            'title': soup.find('h1', 'entry-title').text.strip(),
-            'link': url[:-1],
-            'published': published_iso,
-            'updated': None,
-            'authors': authors.text.replace(' and', ',').split(', ') if authors else [],
-            'content': content_raw.text.strip(),
-            'contentRaw': str(content_raw),
-            },
-            'jurisdiction'
+        authors_raw = soup.find('a', 'author-name')
+        authors = (
+            authors_raw.text.replace(' and', ',').split(', ')
+            if authors_raw else []
             )
 
+        content = soup.find('div', 'vw-post-content').text.strip()
+        content_raw = str(soup.find('div', 'vw-post-content'))
+
+        data = {
+            'title': title,
+            'slug': JurisDictionScraper.slug,
+            'link': article_url,
+            'published': published_iso,
+            'updated': published_iso,
+            'authors': authors,
+            'content': content,
+            'contentRaw': content_raw,
+            }
+
         return data
-
-    except Exception as ex:
-        print('Error in scrape_article(): {ex}'.format(ex=ex))
-        return
-
-
-if __name__ == '__main__':
-    start_time = time.time()
-    scrape_all()
-    total_time = time.time() - start_time
-
-    print('Total scrape took {seconds} s.\n'.format(seconds=total_time))

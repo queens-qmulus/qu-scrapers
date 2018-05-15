@@ -23,7 +23,7 @@ class GazetteScraper:
         print('===================================\n')
 
         for page_index in range(num_pages):
-            print('Page {page_num}'.format(page_num=page_index))
+            print('Page {page_num}'.format(page_num=(page_index + 1)))
             print('---------')
             results = []
 

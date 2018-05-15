@@ -105,7 +105,10 @@ class Buildings:
         code = building_fields[1].text.strip()[14:]
         name = soup.find('div', 'title').text.strip()
         address = building_fields[0].find('a').text.strip()
-        polygon = building['coords'].split(', ')
+        polygon_raw = building['coords'].split(', ')
+
+        # convert polygon coords into tuple of integer pairs
+        polygon = [(int(p[0]), int(p[1])) for p in polygon_raw]
 
         campus_name = campus_relative_url.split('/')[-1]
         latitude, longitude = get_building_coords(address)
@@ -117,8 +120,7 @@ class Buildings:
             'latitude': latitude,
             'longitude': longitude,
             'campus': campus_name,
-            # convert polygon coords into tuple of integer pairs
-            'polygon': [(int(p[0]), int(p[1])) for p in polygon],
+            'polygon': polygon,
         }
 
         return data

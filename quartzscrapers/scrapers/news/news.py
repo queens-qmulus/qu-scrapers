@@ -1,3 +1,4 @@
+import time
 from urllib.parse import urljoin
 
 from ..utils import Scraper
@@ -5,7 +6,7 @@ from .journal import JournalScraper
 from .gazette import GazetteScraper
 from .alumnireview import AlumniReviewScraper
 from .smith_magazine import SmithMagazineScraper
-# from .jurisdiction import JurisDictionScraper
+from .jurisdiction import JurisDictionScraper
 
 class News:
     '''
@@ -24,11 +25,11 @@ class News:
     '''
 
     news_sources = [
-        # JournalScraper,
-        # GazetteScraper,
-        # AlumniReviewScraper,
+        JournalScraper,
+        GazetteScraper,
+        AlumniReviewScraper,
         SmithMagazineScraper,
-        # JurisDictionScraper,
+        JurisDictionScraper,
         ]
 
     @staticmethod
@@ -37,11 +38,15 @@ class News:
 
         for news_source in News.news_sources:
             print('Starting {source} scraper'.format(source=news_source.slug))
-            print('==========================================\n')
+            print('==================================\n')
 
             # TODO: Remove collection param when completed all news scrapers
 
+            start_time = time.time()
             news_source.scrape('articles_{slug}'.format(slug=news_source.slug))
-            print('Done {source} scraper\n'.format(source=news_source.slug))
+            total_time = time.time() - start_time
+
+            print('\nDone {source} scraper in {seconds} s\n'.format(
+                source=news_source.slug, seconds=total_time))
 
         print('Completed news sources')
