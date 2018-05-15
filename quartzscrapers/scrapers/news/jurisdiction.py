@@ -2,8 +2,6 @@ import pendulum
 from urllib.parse import urljoin
 
 from ..utils import Scraper
-from .helpers import add_default_fields
-
 
 class JurisDictionScraper:
     '''

@@ -159,7 +159,7 @@ def scrape_textbooks(url):
 
                 if response.get('subtitle'):
                     subtitle = response['subtitle']
-                    title = '{title}: {sub}'.format(title=title, sub=subtitle) 
+                    title = '{title}: {sub}'.format(title=title, sub=subtitle)
             else:
                 title, authors_raw = textbook.select('div.textbookInfoHolder > h2')[0].text.strip().split('by')
                 authors = authors_raw.strip().replace('/', ', ').split(', ')

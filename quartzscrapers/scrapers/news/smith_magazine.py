@@ -2,8 +2,6 @@ import pendulum
 from urllib.parse import urljoin
 
 from ..utils import Scraper
-from .helpers import add_default_fields
-
 
 class SmithMagazineScraper:
     '''
@@ -54,9 +52,7 @@ class SmithMagazineScraper:
                                     )
 
                                 if article_data:
-                                    results.append(
-                                        add_default_fields(article_data)
-                                        )
+                                    results.append(article_data)
 
                                 Scraper.wait()
 
