@@ -8,3 +8,5 @@ from quartzscrapers.scrapers.news import (
     SmithMagazineScraper,
     JurisDictionScraper,
     )
+
+from quartzscrapers.scrapers.textbooks import Textbooks

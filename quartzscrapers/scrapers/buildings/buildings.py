@@ -1,7 +1,7 @@
 from urllib.parse import urljoin
 
 from ..utils import Scraper
-from .helpers import get_building_coords
+from .building_helpers import get_building_coords
 
 
 class Buildings:

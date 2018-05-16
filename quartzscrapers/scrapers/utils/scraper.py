@@ -26,7 +26,14 @@ class Scraper:
     # 10 seconds, then 10 seconds afterwards
     @staticmethod
     @retry(wait_exponential_multiplier=1000, wait_exponential_max=10000)
-    def get_url(url, params=None, cookies=None, headers=None, timeout=10):
+    def get_url(url, params=None, cookies=None, headers=None, timeout=10, return_soup=False):
+        '''
+        Requests given URL for HTML or BeautifulSoup response
+
+        Returns:
+            bs4.element.Tag ||
+        '''
+
         response = Scraper.session.get(
             url,
             params=params,
@@ -35,11 +42,16 @@ class Scraper:
             timeout=timeout,
             )
 
-        return BeautifulSoup(response.text, 'html.parser')
+        if return_soup:
+            return BeautifulSoup(response.text, 'html.parser')
+
+        return response
 
 
     @staticmethod
     def save_data(data, collection):
+        '''Persists scraped data into database'''
+
         client = MongoClient('localhost', 27017)
         db = client['knowledge']
 
@@ -48,12 +60,16 @@ class Scraper:
 
     @staticmethod
     def wait(seconds=2):
+        '''Temporarily halt process for a certain period of time'''
+
         print('Waiting {seconds} seconds...\n'.format(seconds=seconds))
         time.sleep(seconds)
 
 
     @staticmethod
     def handle_error(ex, func_name):
+        '''Handle error by logging error message'''
+
         print('{name} in {func_name}(): {ex}'.format(
             name=ex.__class__.__name__,
             func_name=func_name,

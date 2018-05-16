@@ -1,237 +1,306 @@
 import re
-import time
-
-from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from urllib.parse import urljoin
-from utils import requests_retry_session
 
-base_url = 'https://www.campusbookstore.com'
+from ..utils import Scraper
+from .textbooks_helpers import get_google_books_info, normalize_string
 
-def scrape():
-    url = urljoin(base_url, 'textbooks/search-engine')
+class Textbooks:
+    '''
+    A scraper for Queen's textbooks.
 
-    try:
-        res = requests_retry_session().get(url, timeout=10)
-        soup = BeautifulSoup(res.text, 'html.parser')
+    Queen's textbooks are located at the Queen's Campus boookstore.
+    Current website: 'https://www.campusbookstore.com'
+    '''
+
+    host = 'https://www.campusbookstore.com'
+
+
+    @staticmethod
+    def scrape():
+        '''Update database records for textbooks scraper'''
 
         # course department codes, such as CISC, ANAT, PHAR, etc..
-        departments = soup.find_all('label', 'checkBoxContainer')
+        departments = Textbooks.get_departments('textbooks/search-engine')
 
         for department in departments:
-            department = department.text.strip()
+            try:
+                print('Course Department: {dep}'.format(dep=department))
+                print('========================\n')
 
-            print('Course Department: {dep}'.format(dep=department))
-            print('========================\n')
+                course_rel_urls = Textbooks.get_course_rel_urls(
+                    'textbooks/search-engine/results', department
+                    )
 
-            crawl_department(department)
+                for course_rel_url in course_rel_urls:
+                    textbook_data= []
 
-    except Exception as ex:
-        print('Error in scrape(): {ex}'.format(ex=ex))
+                    try:
+                        course_page, course_url = (
+                            Textbooks.get_course_page(course_rel_url)
+                            )
+
+                        course_data = Textbooks.parse_course_data(course_page)
+
+                        print('Course: {code} ({term})'.format(
+                            code=course_data['code'], term=course_data['term'])
+                            )
+                        print('--------------------------')
+                        print('Course Link: {url}\n'.format(url=course_url))
+
+                        textbooks = course_page.find_all('div', 'textbookHolder')
+
+                        print('{num} textbook(s) found\n'.format(num=len(textbooks)))
+
+                        for textbook in textbooks:
+                            try:
+                                textbook_info = Textbooks.parse_textbook_data(
+                                    textbook, course_url
+                                    )
+
+                                textbook_data.append(textbook_info)
+
+                                Scraper.wait()
+
+                            except Exception as ex:
+                                Scraper.handle_error(ex, 'scrape')
+
+                        if course_data or textbook_data:
+                            Textbooks.preprocess_and_save_textbooks(
+                                course_data, textbook_data
+                                )
+
+                        Scraper.wait()
+
+                    except Exception as ex:
+                        Scraper.handle_error(ex, 'scrape')
+
+            except Exception as ex:
+                Scraper.handle_error(ex, 'scrape')
 
 
-def crawl_department(department):
-    url = urljoin(base_url, 'textbooks/search-engine/results')
+    @staticmethod
+    def get_departments(relative_url):
+        '''
+        Get list of department codes.
 
-    try:
-        res = requests_retry_session().get(url, timeout=10, params=dict(q=department))
-        soup = BeautifulSoup(res.text, 'html.parser')
+        Such department codes are: 'CISC', 'ANAT', 'PHAR', etc.
 
-        # Because we find results via the search bar with department codes,
-        # we could get unrelated information on the following page. Example:
-        # searching for department code EG will show results for ENGL, ENE, etc
-        # use regex to filter for textbooks having the right department substring
+        Returns:
+            List[String]
+        '''
+
+        campus_bookstore_url = urljoin(Textbooks.host, relative_url)
+        soup = Scraper.get_url(campus_bookstore_url, return_soup=True)
+
+        departments_raw = soup.find_all('label', 'checkBoxContainer')
+        departments = [dep.text.strip() for dep in departments_raw]
+
+        return departments
+
+
+    @staticmethod
+    def get_course_rel_urls(relative_url, department):
+        '''
+        Get list of course relative URLs. This is done using the website's
+        search bar. Department codes are inputted into the search bar and the
+        resulting response has a list of courses related to the department.
+
+        Note that some results will have courses unrelated to the department.
+        For example, a department code of 'EG' will have course code results
+        of 'ENGL', 'ENE', etc. For data integrity, this is filtered.
+
+        Returns:
+            List[String]
+        '''
+
+        course_rel_urls = []
+        department_url = urljoin(Textbooks.host, relative_url)
+        soup = Scraper.get_url(
+            department_url,
+            params=dict(q=department),
+            return_soup=True,
+            )
+
+        # Use regex to filter textbooks having the right department substring
         regex = department + '[0-9]+'
 
         # filter to only retain one department code of courses
         courses_all = soup.find_all('h3')
         courses = [c for c in courses_all if re.search(regex, c.text)]
 
-        print('{num} course(s) found\n'.format(num=len(courses)))
+        print('{n} course(s) found\n'.format(n=len(courses)))
 
-        # Due to campusbookstore.com's HTML markup, we have to pair the course
-        # titles and the course links together, assuming they're always going
-        # to be the same length. Use the zip() function for this
         for course in courses:
             try:
-                print('Course: {course}'.format(course=course.text.strip()))
-                print('-------------------')
-
-                # includes <dl> tag of course instructor, course link, etc
                 course_details = course.next_sibling.next_sibling
-
-                course_link = course_details.find(
+                course_rel_url = course_details.find(
                     'dd', text=re.compile('Course=')
                     ).text.strip()
 
-                #Return type: (Object, Array)
-                course_data, textbook_data = scrape_textbooks(course_link)
-
-                if course_data or textbook_data:
-                    preprocess_textbooks(course_data, textbook_data)
-
-                print('Waiting 2 seconds before next course...')
-                time.sleep(2)
+                course_rel_urls.append(course_rel_url)
 
             except Exception as ex:
-                print('Error in crawl_department(): {ex}'.format(ex=ex))
-                continue
+                Scraper.handle_error(ex, 'get_course_rel_urls')
 
-    except Exception as ex:
-        print('Error in crawl_department(): {ex}'.format(ex=ex))
+        return course_rel_urls
 
 
-def scrape_textbooks(url):
-    url = urljoin(base_url, url)
-    regex = re.compile('[()]')
-    textbook_data = []
+    @staticmethod
+    def get_course_page(course_rel_url):
+        '''
+        Get HTML of course webpage given a course relative URL.
 
-    print('Course Link: {url}'.format(url=url))
+        Returns:
+            Tuple[bs4.element.Tag, String]
+        '''
 
-    try:
-        res = requests_retry_session().get(url, timeout=10)
-        soup = BeautifulSoup(res.text, 'html.parser')
+        course_url = urljoin(Textbooks.host, course_rel_url)
+        soup = Scraper.get_url(course_url, return_soup=True)
 
-        # Course bundle
+        return soup, course_url
+
+
+    @staticmethod
+    def parse_course_data(course_page):
+        '''
+        Parse course data from course page
+
+        Returns:
+            Object
+        '''
+
+        regex = re.compile('[()]')
 
         # e.g: course text: EG553 (WINTER2018)
-        course_code, course_term = soup.find('span', id='textbookCategory').text.strip().split(' ')
-        instructors_raw = [link for link in soup.select('dd > a') if re.search('people', link['href'])][0]
-        instructors = (normalize_names(instructors_raw.text.strip().split(', '))
+        course_code, course_term = (
+            course_page.find('span', id='textbookCategory').text
+                       .strip().split(' ')
+            )
+
+        instructors_raw = (
+            [url for url in course_page.select('dd > a')
+                if re.search('people', url['href'])][0]
+            )
+
+        instructors = (
+            normalize_string(instructors_raw.text.strip().split(', '))
                 if instructors_raw else []
             )
 
+        # strip '(' and ')'
+        term = regex.sub('', course_term)
+
         course_data = {
             'code': course_code,
-            'term': regex.sub('', course_term), # strip '(' and ')'
+            'term': term,
             'instructors': instructors
-        }
-
-        textbooks = soup.find_all('div', 'textbookHolder')
-
-        print('{num} textbook(s) found\n'.format(num=len(textbooks)))
-
-        # Textbook bundle
-        for textbook in textbooks:
-            # === Info retrieved internally ===
-            image_ref = urljoin(
-                base_url,
-                textbook.find('img', {'data-id': 'toLoad'})['data-url']
-                )
-            image_link = requests_retry_session().get(image_ref).text
-
-            status = textbook.find('dd', 'textbookStatus')
-            isbn_13 = textbook.find('dt', text=re.compile('ISBN')).next_sibling.next_sibling.text.strip()
-
-            print('Textbook ISBN: {isbn}'.format(isbn=isbn_13))
-
-            # may new both new and old prices, or just new prices (or none)
-            prices = textbook.find_all('dd', 'textbookPrice')
-            price_new = None
-            price_used = None
-
-            if prices:
-                if len(prices) > 0 and '$' in prices[0].text:
-                    price_new = float(prices[0].text.strip()[1:])
-
-                if len(prices) > 1 and '$' in prices[1].text:
-                    price_used = float(prices[1].text.strip()[1:])
-
-            # == Info retrieved externally (via Google Books API) ==
-            isbn_10 = None
-
-            google_books_res = requests_retry_session().get(
-                'https://www.googleapis.com/books/v1/volumes',
-                params=dict(q='ibsn:{isbn}'.format(isbn=isbn_13))
-                ).json()
-
-            if google_books_res.get('items'):
-                response = google_books_res['items'][0]['volumeInfo']
-
-                isbns = response['industryIdentifiers']
-
-                # API shows both isbn 10 and 13 in an array of any order.
-                # Somethings it shows unrelated data, such as
-                # [{'type': 'OTHER', 'identifier': 'UOM:39015061016815'}]
-                isbn_10 = [isbn['identifier'] for isbn in isbns if isbn['type'] == 'ISBN_10']
-                title = response['title']
-                authors = response['authors']
-
-                if response.get('subtitle'):
-                    subtitle = response['subtitle']
-                    title = '{title}: {sub}'.format(title=title, sub=subtitle)
-            else:
-                title, authors_raw = textbook.select('div.textbookInfoHolder > h2')[0].text.strip().split('by')
-                authors = authors_raw.strip().replace('/', ', ').split(', ')
-
-            data = {
-                'isbn_10': isbn_10[0] if isbn_10 else '',
-                'isbn_13': isbn_13,
-                'title': title.strip(),
-                'authors': normalize_names(authors) if authors else [],
-                'image': image_link,
-                'price_new': price_new,
-                'price_used': price_used,
-                'link': url,
-                'status': status.text.strip() if status else ''
             }
 
-            textbook_data.append(data)
-
-            print('Waiting 2 seconds before next textbook...')
-            time.sleep(2)
-
-        return course_data, textbook_data
-
-    except Exception as ex:
-        print('Error in scrape_textbooks(): {ex}'.format(ex=ex))
+        return course_data
 
 
-# turns 'FOO BAR' into 'Foo Bar'
-def normalize_names(names):
-    new_names = []
+    @staticmethod
+    def parse_textbook_data(textbook, course_url):
+        '''
+        Parse textbook data from course page
 
-    for name in names:
-        new_names.append(
-            ' '.join([n.lower().capitalize() for n in name.split(' ')])
+        Returns:
+            Object
+        '''
+
+        # === Info retrieved internally ===
+        image_ref = urljoin(
+            Textbooks.host,
+            textbook.find('img', {'data-id': 'toLoad'})['data-url']
+            )
+        image_url = Scraper.get_url(image_ref).text
+
+        status_raw = textbook.find('dd', 'textbookStatus')
+        status = status_raw.text.strip() if status_raw else None
+
+        isbn_13 = (
+            textbook.find('dt', text=re.compile('ISBN'))
+                .next_sibling.next_sibling.text.strip()
             )
 
-    return new_names
+        print('Textbook ISBN: {isbn}'.format(isbn=isbn_13))
 
+        # may need both new and old prices, or just new prices (or none)
+        prices = textbook.find_all('dd', 'textbookPrice')
+        price_new = price_used = None
 
-# Courses-to-textbooks will be a n-to-n relationship.
-# Save data based on textbook only, meaning parse through each
-# textbook, and append the course data to the textbook as the
-# 'course' section. 'course' is an array, so we'll be appending
-# courses to the 'course' array, unless that course is already
-# there. Check if a document in the 'textbooks' collection
-# already exists for a certain textbook. That way we only
-# append course info rather than overwrite the whole document
-# with the same textbook info. Q.E.D
-def preprocess_textbooks(course_data, textbooks):
-    client = MongoClient('localhost', 27017)
-    db = client['knowledge']
-    collection = 'textbooks'
+        if prices:
+            if len(prices) > 0 and '$' in prices[0].text:
+                price_new = float(prices[0].text.strip()[1:])
 
-    for textbook in textbooks:
-        isbn_13 = textbook['isbn_13']
+            if len(prices) > 1 and '$' in prices[1].text:
+                price_used = float(prices[1].text.strip()[1:])
 
-        # we've seen this textbook before, append course data to textbook data
-        if db[collection].find_one({'isbn_13': isbn_13}):
-            db[collection].find_one_and_update(
-                {'isbn_13': isbn_13},
-                {'$push': {'courses': course_data}}
-                )
-        # we have not seen this textbook before, add brand new document
+        # == Info retrieved externally (via Google Books API) ==
+        google_books_info = get_google_books_info(isbn_13)
+
+        if google_books_info:
+            title = google_books_info['title']
+            authors = google_books_info['authors']
+            isbn_10 = google_books_info['isbn_10'][0]
         else:
-            textbook['courses'] = [course_data]
-            db[collection].insert(textbook)
+            title_raw, authors_raw = (
+                textbook.select('div.textbookInfoHolder > h2')[0]
+                    .text.strip().split('by')
+                )
 
-    print('\nData saved\n')
+            title = title_raw.strip()
+            authors = authors_raw.strip().replace('/', ', ').split(', ')
+            isbn_10 = None
 
-if __name__ == '__main__':
-    start_time = time.time()
-    scrape()
-    total_time = time.time() - start_time
+        # normalize names, whether from Google Books or Textbooks scraper
+        authors = normalize_string(authors) if authors else []
 
-    print('Total scrape took {seconds} s.\n'.format(seconds=total_time))
+        data = {
+            'isbn_10': isbn_10,
+            'isbn_13': isbn_13,
+            'title': title,
+            'authors': authors,
+            'image': image_url,
+            'price_new': price_new,
+            'price_used': price_used,
+            'link': course_url,
+            'status': status
+            }
+
+        return data
+
+
+    @staticmethod
+    def preprocess_and_save_textbooks(course_data, textbook_data):
+        '''
+        Preprocess and save textbook data to database. There's course infor
+        related to textbooks for this scraper. Because this is focused on
+        textbooks, it parsess through each textbook, and appends the course
+        data as the 'course' section, which is an array.
+
+        If a textbook already exists in the database, course data is appended
+        to the existing record. Otherwise, a brand new textbook record is
+        created with the associated course information.
+        '''
+
+        client = MongoClient('localhost', 27017)
+        db = client['knowledge']
+        collection = 'textbooks'
+
+        for textbook in textbook_data:
+            isbn_13 = textbook['isbn_13']
+
+            # textbook already exists, append course data to textbook data
+            if db[collection].find_one({'isbn_13': isbn_13}):
+                db[collection].find_one_and_update(
+                    {'isbn_13': isbn_13},
+                    {'$push': {'courses': course_data}}
+                    )
+            # textbook does not exist, add brand new document
+            else:
+                textbook['courses'] = [course_data]
+                db[collection].insert(textbook)
+
+        print('Data saved\n')
