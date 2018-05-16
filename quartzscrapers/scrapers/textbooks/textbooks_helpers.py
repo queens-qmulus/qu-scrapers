@@ -8,6 +8,7 @@ def get_google_books_info(isbn_13):
     Returns:
         Object
     '''
+
     data = {}
 
     response = Scraper.get_url(
@@ -23,7 +24,7 @@ def get_google_books_info(isbn_13):
         authors = response['authors']
 
         # API shows both isbn 10 and 13 in an array of any order.
-        # Somethings it shows unrelated data, such as
+        # Sometimes it shows unrelated data, such as
         # [{'type': 'OTHER', 'identifier': 'UOM:39015061016815'}]
         isbn_10 = (
             [isbn['identifier'] for isbn in isbns if isbn['type'] == 'ISBN_10']
