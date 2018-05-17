@@ -65,7 +65,7 @@ class AlumniReviewScraper:
         '''
 
         stories_all_url = urljoin(AlumniReviewScraper.host, relative_url)
-        soup = Scraper.get_url(stories_all_url)
+        soup = Scraper.http_request(stories_all_url)
 
         page_link = soup.find('li', 'pager-last').find('a')['href']
         index = page_link.rfind('=')
@@ -84,7 +84,7 @@ class AlumniReviewScraper:
         '''
 
         article_url = urljoin(AlumniReviewScraper.host, relative_url)
-        soup =  Scraper.get_url(article_url, params=dict(page=page_index))
+        soup =  Scraper.http_request(article_url, params=dict(page=page_index))
 
         articles = soup.find_all('div', 'story-title')
         article_rel_urls = [article.find('a')['href'] for article in articles]
@@ -103,7 +103,7 @@ class AlumniReviewScraper:
         published_iso = None
 
         article_url = urljoin(AlumniReviewScraper.host, article_rel_url)
-        soup = Scraper.get_url(article_url)
+        soup = Scraper.http_request(article_url)
 
         print('Article: {url}'.format(url=article_url))
 

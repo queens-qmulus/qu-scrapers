@@ -91,7 +91,7 @@ class Textbooks:
         '''
 
         campus_bookstore_url = urljoin(Textbooks.host, relative_url)
-        soup = Scraper.get_url(campus_bookstore_url, return_soup=True)
+        soup = Scraper.http_request(campus_bookstore_url)
 
         departments_raw = soup.find_all('label', 'checkBoxContainer')
         departments = [dep.text.strip() for dep in departments_raw]
@@ -116,11 +116,7 @@ class Textbooks:
 
         course_rel_urls = []
         department_url = urljoin(Textbooks.host, relative_url)
-        soup = Scraper.get_url(
-            department_url,
-            params=dict(q=department),
-            return_soup=True,
-            )
+        soup = Scraper.http_request(department_url, params=dict(q=department))
 
         # Use regex to filter textbooks having the right department substring
         regex = department + '[0-9]+'
@@ -156,7 +152,7 @@ class Textbooks:
         '''
 
         course_url = urljoin(Textbooks.host, course_rel_url)
-        soup = Scraper.get_url(course_url, return_soup=True)
+        soup = Scraper.http_request(course_url)
 
         return soup, course_url
 
@@ -214,7 +210,7 @@ class Textbooks:
             Textbooks.host,
             textbook.find('img', {'data-id': 'toLoad'})['data-url']
             )
-        image_url = Scraper.get_url(image_ref).text
+        image_url = Scraper.http_request(image_ref, parse=False).text
 
         status_raw = textbook.find('dd', 'textbookStatus')
         status = status_raw.text.strip() if status_raw else None

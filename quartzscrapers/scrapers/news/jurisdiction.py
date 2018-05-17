@@ -35,7 +35,7 @@ class JurisDictionScraper:
                         results = []
 
                         try:
-                            archive_page = Scraper.get_url(archive_page_url)
+                            archive_page = Scraper.http_request(archive_page_url)
 
                             print('Page {page_num}'.format(page_num=page_num))
                             print('-------')
@@ -86,7 +86,7 @@ class JurisDictionScraper:
             List[String]
         '''
 
-        soup = Scraper.get_url(JurisDictionScraper.host)
+        soup = Scraper.http_request(JurisDictionScraper.host)
 
         archives = soup.find('div', id='archives-3').find_all('li')
         archive_month_urls = [archive.find('a')['href'] for archive in archives]
@@ -106,14 +106,14 @@ class JurisDictionScraper:
 
         archive_page_urls = [archive_month_url]
 
-        archive_page = Scraper.get_url(archive_month_url)
+        archive_page = Scraper.http_request(archive_month_url)
 
         # paginate until we no longer see a 'next' button
         while archive_page.find('a', 'next'):
             archive_page_url = archive_page.find('a', 'next')['href']
             archive_page_urls.append(archive_page_url)
 
-            archive_page = Scraper.get_url(archive_page_url)
+            archive_page = Scraper.http_request(archive_page_url)
 
         return archive_page_urls
 
@@ -145,7 +145,7 @@ class JurisDictionScraper:
         '''
 
         article_url = urljoin(JurisDictionScraper.host, article_rel_url)[:-1]
-        soup = Scraper.get_url(article_url)
+        soup = Scraper.http_request(article_url)
 
         title = soup.find('h1', 'entry-title').text.strip()
 

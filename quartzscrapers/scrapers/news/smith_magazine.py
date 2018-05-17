@@ -78,7 +78,7 @@ class SmithMagazineScraper:
         '''
 
         magazine_archive_url = urljoin(SmithMagazineScraper.host, relative_url)
-        soup = Scraper.get_url(magazine_archive_url)
+        soup = Scraper.http_request(magazine_archive_url)
 
         magazine_archives = soup.find_all('div', 'field-content')
         magazine_archive_urls = (
@@ -101,7 +101,7 @@ class SmithMagazineScraper:
         '''
 
         issue_url = urljoin(SmithMagazineScraper.host, relative_url)
-        soup =  Scraper.get_url(issue_url)
+        soup =  Scraper.http_request(issue_url)
 
         article_sections = (
             soup.find('div', 'group-right').find_all('div', 'field')
@@ -134,7 +134,7 @@ class SmithMagazineScraper:
         '''
 
         article_url = urljoin(SmithMagazineScraper.host, article_rel_url)
-        soup = Scraper.get_url(article_url)
+        soup = Scraper.http_request(article_url)
 
         print('Article: {url}'.format(url=article_url))
 

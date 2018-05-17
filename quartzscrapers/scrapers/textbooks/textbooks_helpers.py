@@ -11,9 +11,10 @@ def get_google_books_info(isbn_13):
 
     data = {}
 
-    response = Scraper.get_url(
+    response = Scraper.http_request(
         url='https://www.googleapis.com/books/v1/volumes',
         params=dict(q='ibsn:{isbn}'.format(isbn=isbn_13)),
+        parse=False,
         ).json()
 
     if response.get('items'):

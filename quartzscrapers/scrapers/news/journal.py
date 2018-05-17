@@ -78,7 +78,7 @@ class JournalScraper:
         '''
 
         host_url = urljoin(JournalScraper.host, relative_url)
-        soup = Scraper.get_url(host_url)
+        soup = Scraper.http_request(host_url)
 
         year_urls = soup.find('ul', 'views-summary').find_all('li')
         year_rel_urls = [url.find('a')['href'] for url in year_urls]
@@ -96,7 +96,7 @@ class JournalScraper:
         '''
 
         year_url = urljoin(JournalScraper.host, relative_url)
-        soup = Scraper.get_url(year_url)
+        soup = Scraper.http_request(year_url)
 
         last_page = soup.find('li', 'pager-last')
         page_link = last_page.find('a')['href'] if last_page else 'page=0'
@@ -118,7 +118,7 @@ class JournalScraper:
             List[String]
         '''
         year_url = urljoin(JournalScraper.host, relative_url)
-        soup =  Scraper.get_url(year_url, params=dict(page=page_index))
+        soup =  Scraper.http_request(year_url, params=dict(page=page_index))
 
         articles = soup.find_all('div', 'node-story')
         article_rel_urls = (
@@ -141,7 +141,7 @@ class JournalScraper:
         regex_str = 'Last Updated: '
 
         article_url = urljoin(JournalScraper.host, article_rel_url)[:-1]
-        soup = Scraper.get_url(article_url)
+        soup = Scraper.http_request(article_url)
 
         print('Article: {url}'.format(url=article_url))
 

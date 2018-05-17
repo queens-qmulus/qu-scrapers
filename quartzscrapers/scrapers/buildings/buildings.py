@@ -52,7 +52,7 @@ class Buildings:
         '''
 
         campus_overall_url = urljoin(Buildings.host, relative_url)
-        soup = Scraper.get_url(campus_overall_url)
+        soup = Scraper.http_request(campus_overall_url)
         campuses = soup.find_all('p', 'overall-label')
 
         return campuses
@@ -75,7 +75,7 @@ class Buildings:
         print('========================\n')
 
         campus_url = urljoin(Buildings.host, campus_relative_url)
-        soup = Scraper.get_url(campus_url)
+        soup = Scraper.http_request(campus_url)
         campus_map = soup.find('map')
         buildings = campus_map.find_all('area')
 
@@ -95,7 +95,7 @@ class Buildings:
 
         building_relative_url = urljoin(campus_relative_url, building_param)
         building_url = urljoin(Buildings.host, building_relative_url)
-        soup = Scraper.get_url(building_url)
+        soup = Scraper.http_request(building_url)
 
         campus_map = soup.find('map')
         building = campus_map.find('area', href=building_param)

@@ -23,10 +23,10 @@ class Scraper:
 
     # Decorator for retrying behaviour for GET requests. Uses exponential
     # backoff by waiting 2 ^ (x * 1000) milliseconds between each retry, up to
-    # 10 seconds, then 10 seconds afterwards
+    # 30 seconds, then 10 seconds afterwards
     @staticmethod
-    @retry(wait_exponential_multiplier=1000, wait_exponential_max=10000)
-    def get_url(url, params=None, cookies=None, headers=None, timeout=10, return_soup=False):
+    @retry(wait_exponential_multiplier=1000, wait_exponential_max=30000)
+    def http_request(url, params=None, cookies=None, headers=None, timeout=20, parse=True):
         '''
         Requests given URL for HTML or BeautifulSoup response
 
@@ -42,7 +42,8 @@ class Scraper:
             timeout=timeout,
             )
 
-        if return_soup:
+        # parse the response's HTML via BeautifulSoup
+        if parse:
             return BeautifulSoup(response.text, 'html.parser')
 
         return response
