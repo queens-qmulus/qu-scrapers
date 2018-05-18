@@ -1,10 +1,11 @@
 import re
+import socket
 import chromedriver_binary # Adds chromedriver_binary to path
-
-from urllib.parse import urljoin
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+
+from urllib.parse import urljoin
 
 from ..utils import Scraper
 from ..utils.config import QUEENS_USERNAME, QUEENS_PASSWORD
@@ -14,8 +15,6 @@ from .courses_helpers import noop
 class Courses:
     '''
     A scraper for Queen's courses.
-
-    <Lorem Ipsum insert some explanatory text here>
     '''
 
     host = 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/HRMS/c/SA_LEARNER_SERVICES.CLASS_SEARCH.GBL'
@@ -39,40 +38,65 @@ class Courses:
     def scrape():
         '''Update database records for courses scraper'''
 
+        # SOLUS parameters that influence what's seen on response page after
+        # a request
         params = {
             'Page': 'SSR_CLSRCH_ENTRY',
             'Action': 'U',
             'ExactKeys': 'Y',
-            'TargetFrameName': 'None'
+            'TargetFrameName': 'None',
+            'adv_search': Courses.IC_ACTIONS['adv_search'],
             }
 
+        # Imitate an actual login and grab generated cookies, which allow us
+        # to bypass SOLUS request redirects.
         session_cookies = Courses.login()
 
         # Note: May not be necessary
         # hidden_params = Courses._get_hidden_params(soup)
         # hidden_params.update(Courses.IC_ACTIONS['adv_search'])
 
-        params.update(Courses.IC_ACTIONS['adv_search'])
-
         # TODO: Build in post requests into base scraper request function
-        soup = Scraper.http_request(Courses.host, params=params, cookies=cookies)
+
+        # Request 'search' page for list of courses.
+        soup = Scraper.http_request(
+            Courses.host,
+            params=params,
+            cookies=session_cookies,
+            )
 
         initially_selected_term = Courses._get_selected_term(soup)
-        advanced_search_params = Courses._get_advanced_search_params(soup)
+        advanced_search_params = Courses._get_advanced_search_params()
 
         params.update(advanced_search_params)
 
         departments = Courses._get_departments(soup)
 
+        import pdb; pdb.set_trace()
+
+        print('temporarily done for now')
+
+        return
+
 
     @staticmethod
     def login():
+        '''
+        Emulate a SOLUS login via a Selenium webdriver. Mainly used for user
+        authentication. Returns session cookies, which are are retrieved and
+        used for the remainder of this scraping session.
+
+        Returns:
+            Object
+        '''
+
         chrome_options = Options()
         chrome_options.add_argument('--headless')
+        socket.setdefaulttimeout(60) # timeout for current socket in use
 
         driver = webdriver.Chrome()
         driver.set_page_load_timeout(30)
-        driver.implicitly_wait(30)
+        driver.implicitly_wait(30) # timeout to for an element to be found
         driver.get('https://my.queensu.ca')
 
         username_field = driver.find_element_by_id('username')
@@ -91,7 +115,6 @@ class Courses:
         driver.switch_to_frame(iframe)
         driver.find_element_by_link_text('Search').click()
 
-        # TODO: Consider
         session_cookies = {}
 
         for cookie in driver.get_cookies():
@@ -121,17 +144,33 @@ class Courses:
 
     @staticmethod
     def _get_selected_term(soup):
-        selected_term =
-            (soup.find('select', id='CLASS_SRCH_WRK2_STRM$35$')
+        selected_term = (
+            soup.find('select', id='CLASS_SRCH_WRK2_STRM$35$')
                 .find('option', selected='selected'))
 
         return selected_term
 
 
     @staticmethod
-    def _get_advanced_search_params(soup):
+    def _get_advanced_search_params():
+        '''
+        Sets request parameters for advanced search details.
+
+        When normally using SOLUS under the 'search' page, you can normally
+        click the 'advanced search' tab, where you'll see options for
+        checkboxes such as 'Show available classes only' or 'show any day
+        of the week', and you can check boxes such as 'Monday', 'Tuesday', etc.
+
+        These user actions become HTTP request parameters. This function
+        instantiates such parameters for the following HTTP requests.
+
+        Returns:
+            Object
+        '''
+
         refined_search_query = {
         'SSR_CLSRCH_WRK_SSR_OPEN_ONLY$chk$5': 'N',
+        'SSR_CLSRCH_WRK_SSR_OPEN_ONLY$5': 'N',
         'SSR_CLSRCH_WRK_INCLUDE_CLASS_DAYS$8': 'J',
         }
 
@@ -154,6 +193,14 @@ class Courses:
 
     @staticmethod
     def _get_departments(soup):
+        '''
+        Scrape all department codes and their corresponding names from the
+        'available courses' dropdown menu on SOLUS.
+
+        Returns:
+            Object
+        '''
+
         dept_soups = soup.find(
             'select',
             id=re.compile(r'SSR_CLSRCH_WRK_SUBJECT_SRCH\$\d')
