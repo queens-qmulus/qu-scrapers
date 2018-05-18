@@ -10,3 +10,5 @@ from quartzscrapers.scrapers.news import (
     )
 
 from quartzscrapers.scrapers.textbooks import Textbooks
+
+from quartzscrapers.scrapers.courses import Courses
