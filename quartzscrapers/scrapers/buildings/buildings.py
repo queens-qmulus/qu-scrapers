@@ -17,17 +17,17 @@ class Buildings:
     def scrape():
         '''Update database records for buildings scraper'''
 
-        campuses = Buildings.get_campuses('campusmap/overall')
+        campuses = Buildings._get_campuses('campusmap/overall')
 
         for campus in campuses:
             campus_relative_url = campus.find('a')['href']
-            buildings = Buildings.get_buildings(campus_relative_url)
+            buildings = Buildings._get_buildings(campus_relative_url)
 
             for building in buildings:
                 results = []
 
                 try:
-                    building_data = Buildings.parse_data(
+                    building_data = Buildings._parse_building_data(
                         campus_relative_url,
                         building['href']
                         )
@@ -43,7 +43,7 @@ class Buildings:
 
 
     @staticmethod
-    def get_campuses(relative_url):
+    def _get_campuses(relative_url):
         '''
         Get list of campus URLs as BeautifulSoup HTML tags
 
@@ -59,7 +59,7 @@ class Buildings:
 
 
     @staticmethod
-    def get_buildings(campus_relative_url):
+    def _get_buildings(campus_relative_url):
         '''
         Get list of relative building URLs as BeautifulSoup HTML tags
 
@@ -83,7 +83,7 @@ class Buildings:
 
 
     @staticmethod
-    def parse_data(campus_relative_url, building_param):
+    def _parse_building_data(campus_relative_url, building_param):
         '''
         Parse data from building tags
 

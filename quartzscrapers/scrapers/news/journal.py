@@ -17,7 +17,7 @@ class JournalScraper:
         '''Parse information custom to The Queen's Journal'''
 
         # QJ divides articles by archive year
-        year_rel_urls = JournalScraper.get_archive_years('news')
+        year_rel_urls = JournalScraper._get_archive_years('news')
 
         # Series of try-catches here to ensure robustness of scraper despite
         # unavoidable errors per loop series
@@ -29,7 +29,7 @@ class JournalScraper:
             try:
                 # get numberof pages a particular archive year needs to crawl
                 # along with soup reference to continue page crawl
-                num_pages = JournalScraper.get_num_pages(year_rel_url)
+                num_pages = JournalScraper._get_num_pages(year_rel_url)
 
                 print('Total Pages: {num_pages}'.format(num_pages=num_pages))
                 print('===================================\n')
@@ -41,14 +41,14 @@ class JournalScraper:
                     results = []
 
                     try:
-                        article_rel_urls = JournalScraper.get_article_rel_urls(
+                        article_rel_urls = JournalScraper._get_article_rel_urls(
                             year_rel_url, page_index
                             )
 
                         # Scrape each article on a page
                         for article_rel_url in article_rel_urls:
                             try:
-                                article_data = JournalScraper.parse_data(
+                                article_data = JournalScraper._parse_news_data(
                                     article_rel_url
                                     )
 
@@ -69,7 +69,7 @@ class JournalScraper:
 
 
     @staticmethod
-    def get_archive_years(relative_url):
+    def _get_archive_years(relative_url):
         '''
         Get list of relative archive year URLs.
 
@@ -87,7 +87,7 @@ class JournalScraper:
 
 
     @staticmethod
-    def get_num_pages(relative_url):
+    def _get_num_pages(relative_url):
         '''
         Request archive year URL and parse number of pages to crawl
 
@@ -109,7 +109,7 @@ class JournalScraper:
         return num_pages
 
     @staticmethod
-    def get_article_rel_urls(relative_url, page_index):
+    def _get_article_rel_urls(relative_url, page_index):
         '''
         Gets list of relative URLs for articles. Queen's Journal displays 20
         articles per page.
@@ -129,7 +129,7 @@ class JournalScraper:
 
 
     @staticmethod
-    def parse_data(article_rel_url):
+    def _parse_news_data(article_rel_url):
         '''
         Parse data from article page tags
 

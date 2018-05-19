@@ -18,7 +18,7 @@ class AlumniReviewScraper:
         subcategory under Queen's Gazette.
         '''
 
-        num_pages = AlumniReviewScraper.get_num_pages(
+        num_pages = AlumniReviewScraper._get_num_pages(
             'gazette/alumnireview/stories'
             )
 
@@ -31,13 +31,13 @@ class AlumniReviewScraper:
             results = []
 
             try:
-                article_rel_urls = AlumniReviewScraper.get_article_rel_urls(
+                article_rel_urls = AlumniReviewScraper._get_article_rel_urls(
                     'gazette/alumnireview/stories', page_index
                     )
 
                 for article_rel_url in article_rel_urls:
                     try:
-                        article_data = AlumniReviewScraper.parse_data(
+                        article_data = AlumniReviewScraper._parse_news_data(
                             article_rel_url
                             )
 
@@ -55,7 +55,7 @@ class AlumniReviewScraper:
                 Scraper.handle_error(ex, 'scrape')
 
     @staticmethod
-    def get_num_pages(relative_url):
+    def _get_num_pages(relative_url):
         '''
         Request URL for all archived articles and parse number of pages to
         crawl.
@@ -74,7 +74,7 @@ class AlumniReviewScraper:
         return num_pages
 
     @staticmethod
-    def get_article_rel_urls(relative_url, page_index):
+    def _get_article_rel_urls(relative_url, page_index):
         '''
         Gets list of relative URLs for articles. Queen's Alumni Review
         displays approximately 16 articles per page.
@@ -93,7 +93,7 @@ class AlumniReviewScraper:
 
 
     @staticmethod
-    def parse_data(article_rel_url):
+    def _parse_news_data(article_rel_url):
         '''
         Parse data from article page tags
 

@@ -21,14 +21,14 @@ class Textbooks:
         '''Update database records for textbooks scraper'''
 
         # course department codes, such as CISC, ANAT, PHAR, etc..
-        departments = Textbooks.get_departments('textbooks/search-engine')
+        departments = Textbooks._get_departments('textbooks/search-engine')
 
         for department in departments:
             try:
                 print('Course Department: {dep}'.format(dep=department))
                 print('========================\n')
 
-                course_rel_urls = Textbooks.get_course_rel_urls(
+                course_rel_urls = Textbooks._get_course_rel_urls(
                     'textbooks/search-engine/results', department
                     )
 
@@ -37,10 +37,10 @@ class Textbooks:
 
                     try:
                         course_page, course_url = (
-                            Textbooks.get_course_page(course_rel_url)
+                            Textbooks._get_course_page(course_rel_url)
                             )
 
-                        course_data = Textbooks.parse_course_data(course_page)
+                        course_data = Textbooks._parse_course_data(course_page)
 
                         print('Course: {code} ({term})'.format(
                             code=course_data['code'], term=course_data['term'])
@@ -54,7 +54,7 @@ class Textbooks:
 
                         for textbook in textbooks:
                             try:
-                                textbook_info = Textbooks.parse_textbook_data(
+                                textbook_info = Textbooks._parse_textbook_data(
                                     textbook, course_url
                                     )
 
@@ -66,7 +66,7 @@ class Textbooks:
                                 Scraper.handle_error(ex, 'scrape')
 
                         if course_data or textbook_data:
-                            Textbooks.preprocess_and_save_textbooks(
+                            Textbooks._preprocess_and_save_textbooks(
                                 course_data, textbook_data
                                 )
 
@@ -80,7 +80,7 @@ class Textbooks:
 
 
     @staticmethod
-    def get_departments(relative_url):
+    def _get_departments(relative_url):
         '''
         Get list of department codes.
 
@@ -100,7 +100,7 @@ class Textbooks:
 
 
     @staticmethod
-    def get_course_rel_urls(relative_url, department):
+    def _get_course_rel_urls(relative_url, department):
         '''
         Get list of course relative URLs. This is done using the website's
         search bar. Department codes are inputted into the search bar and the
@@ -137,13 +137,13 @@ class Textbooks:
                 course_rel_urls.append(course_rel_url)
 
             except Exception as ex:
-                Scraper.handle_error(ex, 'get_course_rel_urls')
+                Scraper.handle_error(ex, '_get_course_rel_urls')
 
         return course_rel_urls
 
 
     @staticmethod
-    def get_course_page(course_rel_url):
+    def _get_course_page(course_rel_url):
         '''
         Get HTML of course webpage given a course relative URL.
 
@@ -158,7 +158,7 @@ class Textbooks:
 
 
     @staticmethod
-    def parse_course_data(course_page):
+    def _parse_course_data(course_page):
         '''
         Parse course data from course page
 
@@ -197,7 +197,7 @@ class Textbooks:
 
 
     @staticmethod
-    def parse_textbook_data(textbook, course_url):
+    def _parse_textbook_data(textbook, course_url):
         '''
         Parse textbook data from course page
 
@@ -269,7 +269,7 @@ class Textbooks:
 
 
     @staticmethod
-    def preprocess_and_save_textbooks(course_data, textbook_data):
+    def _preprocess_and_save_textbooks(course_data, textbook_data):
         '''
         Preprocess and save textbook data to database. There's course infor
         related to textbooks for this scraper. Because this is focused on

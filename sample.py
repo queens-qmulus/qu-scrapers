@@ -190,7 +190,6 @@ def login_to_solus_sample():
     # Should now be logged in and on the student center page
 
 def do_continue_page(res, session):
-    import pdb; pdb.set_trace()
     """
     The SSO system returns a specific page only if JS is disabled. It has you
     click a Continue button which submits a form with some hidden values
@@ -206,8 +205,6 @@ def do_continue_page(res, session):
     return session.post(url, data=data["payload"])
 
 def login_continue_page(res):
-    import pdb; pdb.set_trace()
-    """Return the url and payload to post from the continue page"""
 
     #Grab the RelayState, SAMLResponse, and POST url
     soup = BeautifulSoup(res.text, 'html.parser')
@@ -227,7 +224,6 @@ def login_continue_page(res):
     return dict(url=url, payload=payload)
 
 def login_solus_link(res):
-    import pdb; pdb.set_trace()
     """Return the href of the SOLUS link"""
 
     soup = BeautifulSoup(res.text, 'html.parser')

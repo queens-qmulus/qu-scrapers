@@ -15,7 +15,7 @@ class GazetteScraper:
     def scrape(collection='articles'):
         '''Parse information custom to Queen's Gazette'''
 
-        num_pages = GazetteScraper.get_num_pages('gazette/stories/all')
+        num_pages = GazetteScraper._get_num_pages('gazette/stories/all')
 
         print('Total Pages: {num_pages}'.format(num_pages=num_pages))
         print('===================================\n')
@@ -26,13 +26,13 @@ class GazetteScraper:
             results = []
 
             try:
-                article_rel_urls = GazetteScraper.get_article_rel_urls(
+                article_rel_urls = GazetteScraper._get_article_rel_urls(
                     'gazette/stories/all', page_index
                     )
 
                 for article_rel_url in article_rel_urls:
                     try:
-                        article_data = GazetteScraper.parse_data(
+                        article_data = GazetteScraper._parse_news_data(
                             article_rel_url
                             )
 
@@ -50,7 +50,7 @@ class GazetteScraper:
                 Scraper.handle_error(ex, 'scrape')
 
     @staticmethod
-    def get_num_pages(relative_url):
+    def _get_num_pages(relative_url):
         '''
         Request URL for all archived articles and parse number of pages to
         crawl.
@@ -72,7 +72,7 @@ class GazetteScraper:
         return num_pages
 
     @staticmethod
-    def get_article_rel_urls(relative_url, page_index):
+    def _get_article_rel_urls(relative_url, page_index):
         '''
         Gets list of relative URLs for articles. Queen's Gazette displays
         approximately 16 articles per page.
@@ -91,7 +91,7 @@ class GazetteScraper:
 
 
     @staticmethod
-    def parse_data(article_rel_url):
+    def _parse_news_data(article_rel_url):
         '''
         Parse data from article page tags
 

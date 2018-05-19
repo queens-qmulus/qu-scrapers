@@ -18,14 +18,14 @@ class JurisDictionScraper:
         '''
 
         try:
-            archive_month_urls = JurisDictionScraper.get_archive_month_urls()
+            archive_month_urls = JurisDictionScraper._get_archive_month_urls()
 
             for archive_month_url in archive_month_urls:
                 try:
                     print('ARCHIVE: {url}\n'.format(url=archive_month_url))
 
                     archive_page_urls = (
-                        JurisDictionScraper.get_archive_page_urls(
+                        JurisDictionScraper._get_archive_page_urls(
                             archive_month_url
                         ))
 
@@ -41,7 +41,7 @@ class JurisDictionScraper:
                             print('-------')
 
                             article_urls = (
-                                JurisDictionScraper.get_rel_article_urls(
+                                JurisDictionScraper._get_rel_article_urls(
                                     archive_page
                                 ))
 
@@ -51,7 +51,7 @@ class JurisDictionScraper:
 
                                 try:
                                     article_data = (
-                                        JurisDictionScraper.parse_data(
+                                        JurisDictionScraper._parse_news_data(
                                             article_url
                                         ))
 
@@ -78,7 +78,7 @@ class JurisDictionScraper:
 
 
     @staticmethod
-    def get_archive_month_urls():
+    def _get_archive_month_urls():
         '''
         Request main URL and extract all archived month URLs.
 
@@ -95,7 +95,7 @@ class JurisDictionScraper:
 
 
     @staticmethod
-    def get_archive_page_urls(archive_month_url):
+    def _get_archive_page_urls(archive_month_url):
         '''
         Requests an archive month's URL and crawls the archive for any
         additional paginated 'next' URLs, if they exist.
@@ -119,7 +119,7 @@ class JurisDictionScraper:
 
 
     @staticmethod
-    def get_rel_article_urls(archive_page):
+    def _get_rel_article_urls(archive_page):
         '''
         Extract every article's relative URL from the current archive page.
 
@@ -136,7 +136,7 @@ class JurisDictionScraper:
 
 
     @staticmethod
-    def parse_data(article_rel_url):
+    def _parse_news_data(article_rel_url):
         '''
         Parse data from article page tags
 

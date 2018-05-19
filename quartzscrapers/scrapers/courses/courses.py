@@ -283,7 +283,7 @@ class Courses:
 
         # E.g: {'ICAction': 'CLASS_SRCH_WRK2_STRM$35$'}
         params.update(Courses._create_ic_action('term'))
-        params.update(PeoplesoftParser.AJAX_PARAMS)
+        params.update(Courses.AJAX_PARAMS)
 
         return Courses.http_request(
             Courses.host,

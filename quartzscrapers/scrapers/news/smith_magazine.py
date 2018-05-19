@@ -18,7 +18,7 @@ class SmithMagazineScraper:
         '''
 
         try:
-            magazine_issue_rel_urls = SmithMagazineScraper.get_magazine_issues(
+            magazine_issue_rel_urls = SmithMagazineScraper._get_magazine_issues(
                 'magazine/archive'
                 )
 
@@ -27,18 +27,16 @@ class SmithMagazineScraper:
                     print('ARCHIVE: {url}\n'.format(url=magazine_issue_rel_url))
 
                     article_sections = (
-                        SmithMagazineScraper.get_article_sections(
+                        SmithMagazineScraper._get_article_sections(
                             magazine_issue_rel_url
                             ))
 
                     for article_section in article_sections[4:]:
-                        import pdb; pdb.set_trace()
-
                         results = []
 
                         title = article_section.find('h2', 'block-title').text.strip()
 
-                        article_rel_urls = SmithMagazineScraper.get_article_rel_urls(
+                        article_rel_urls = SmithMagazineScraper._get_article_rel_urls(
                             article_section
                             )
 
@@ -47,7 +45,7 @@ class SmithMagazineScraper:
 
                         for article_rel_url in article_rel_urls:
                             try:
-                                article_data = SmithMagazineScraper.parse_data(
+                                article_data = SmithMagazineScraper._parse_news_data(
                                     article_rel_url
                                     )
 
@@ -69,7 +67,7 @@ class SmithMagazineScraper:
 
 
     @staticmethod
-    def get_magazine_issues(relative_url):
+    def _get_magazine_issues(relative_url):
         '''
         Request URL for all archived magazine issues.
 
@@ -89,7 +87,7 @@ class SmithMagazineScraper:
 
 
     @staticmethod
-    def get_article_sections(relative_url):
+    def _get_article_sections(relative_url):
         '''
         Request magazine URL and parse BeautifulSoup HTML tag of each magazine
         section. Each magazine has varying article sections, such as
@@ -111,7 +109,7 @@ class SmithMagazineScraper:
 
 
     @staticmethod
-    def get_article_rel_urls(article_section):
+    def _get_article_rel_urls(article_section):
         '''
         Extract article relative URL from BeautifulSoup HTML tag.
 
@@ -125,7 +123,7 @@ class SmithMagazineScraper:
 
 
     @staticmethod
-    def parse_data(article_rel_url):
+    def _parse_news_data(article_rel_url):
         '''
         Parse data from article page tags
 
