@@ -18,6 +18,7 @@ class Courses:
     '''
 
     host = 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/HRMS/c/SA_LEARNER_SERVICES.CLASS_SEARCH.GBL'
+
     headers = {
         'Pragma': 'no-cache',
         'Accept-Encoding': 'gzip, deflate, sdch, br',
@@ -39,7 +40,7 @@ class Courses:
     AJAX_PARAMS = {
         'ICAJAX': '1',
         'ICNAVTYPEDROPDOWN': '0'
-    }
+        }
 
     @staticmethod
     def scrape():
@@ -54,29 +55,38 @@ class Courses:
             'TargetFrameName': 'None',
             }
 
+        print('Starting Courses scrape')
+
         # Imitate an actual login and grab generated cookies, which allows the
         # bypass of SOLUS request redirects.
         cookies = Courses.login()
 
-        # Note: May not be necessary
-        # hidden_params = Courses._get_hidden_params(soup)
-        # hidden_params.update(Courses.IC_ACTIONS['adv_search'])
+        # Should be GET (it is)
+        soup = Scraper.http_request(
+            Courses.host,
+            params=params,
+            cookies=cookies
+            )
 
+        hidden_params = Courses._get_hidden_params(soup)
+        params.update(hidden_params)
         params.update(Courses._create_ic_action('adv_search'))
 
+        # Should be POST (it is not)
         # TODO: Build in post requests into base scraper request function
         # Request 'search' page for list of courses.
         soup = Scraper.http_request(
             Courses.host,
             params=params,
-            cookies=cookies,
+            cookies=cookies
             )
 
-        initially_selected_term = Courses._get_selected_term(soup)
+        # Note: May not be necessary (yet). Should be moved further down
+        # initially_selected_term = Courses._get_selected_term(soup)
         advanced_search_params = Courses._get_advanced_search_params()
         params.update(advanced_search_params)
 
-        years_and_terms = _get_years_and_terms(soup)
+        years_and_terms = Courses._get_years_and_terms(soup)
 
         # TODO: Check/verify from here
         for year, terms in years_and_terms.items():
@@ -94,7 +104,7 @@ class Courses:
                     params['SSR_CLSRCH_WRK_SUBJECT_SRCH$0'] = dept_code
 
                     # Get course listing page for department
-                    soup.= Scraper.http_request(
+                    soup = Scraper.http_request(
                         Courses.host,
                         params=params,
                         cookies=cookies
@@ -109,7 +119,7 @@ class Courses:
                         courses, soup)
 
                     for course_soup in course_soups:
-                        course_data Courses.parse_course_data(course_soup)
+                        course_data = Courses.parse_course_data(course_soup)
 
                         # TODO: Check & persist data
 
@@ -126,6 +136,8 @@ class Courses:
         Returns:
             Object
         '''
+
+        print('Running web driver for authentication...')
 
         chrome_options = Options()
         chrome_options.add_argument('--headless')
@@ -159,17 +171,22 @@ class Courses:
 
         driver.close()
 
+        print('Finished with wed driver')
+
         return session_cookies
 
 
     @staticmethod
-    def _create_ic_action(action):
-        return {'ICAction': Courses.IC_ACTIONS[action]}
-
-
-    # Note: May not be necessary
-    @staticmethod
     def _get_hidden_params(soup):
+        '''
+        Parses HTML for hidden values that represent SOLUS parameters. SOLUS
+        uses dynamic parameters to represent user state given certain actions
+        taken.
+
+        Returns:
+            Object
+        '''
+
         params = {}
 
         hidden = soup.find('div', id=re.compile(r'win\ddivPSHIDDENFIELDS'))
@@ -185,12 +202,17 @@ class Courses:
 
 
     @staticmethod
-    def _get_selected_term(soup):
-        selected_term = (
-            soup.find('select', id='CLASS_SRCH_WRK2_STRM$35$')
-                .find('option', selected='selected'))
+    def _create_ic_action(action):
+        '''
+        Creates object representing current state of ICAction parameter.
+        SOLUS uses dynamic parameters to represent user state given certain
+        actions they take.
 
-        return selected_term
+        Returns:
+            Object
+        '''
+
+        return {'ICAction': Courses.IC_ACTIONS[action]}
 
 
     @staticmethod
@@ -226,6 +248,36 @@ class Courses:
 
 
     @staticmethod
+    def _get_years_and_terms(soup):
+        years_terms_values = {}
+
+        term_data_soup = (
+            soup.find('select', id='CLASS_SRCH_WRK2_STRM$35$')
+                .find_all('option')[1:])
+
+        for term_data in term_data_soup:
+            # differentiate between term name and years
+            year, term = term_data.text.split(' ')
+
+            if year not in years_terms_values:
+                years_terms_values[year] = {}
+
+            # Add corresponding year-term code per term
+            years_terms_values[year][term] = term_data['value']
+
+        return years_terms_values
+
+
+    @staticmethod
+    def _get_selected_term(soup):
+        selected_term = (
+            soup.find('select', id='CLASS_SRCH_WRK2_STRM$35$')
+                .find('option', selected='selected'))
+
+        return selected_term
+
+
+    @staticmethod
     def _get_dept_param_key(soup):
         return soup.find(
             'select',
@@ -256,27 +308,6 @@ class Courses:
 
 
     @staticmethod
-    def _get_years_and_terms(soup):
-        years_terms_values = {}
-
-        term_data_soup = (
-            soup.find('select', id='CLASS_SRCH_WRK2_STRM$35$')
-                .find_all('option')[1:])
-
-        for term_data in term_data_soup:
-            # differentiate between term name and years
-            year, term = term_data.text.split(' ')
-
-            if year not in years_terms_values:
-                years_terms_values[year] = {}
-
-            # Add corresponding year-term code per term
-            years_terms_values[year][term] = term_data['value']
-
-        return years_terms_values
-
-
-    @staticmethod
     def _update_term(term_code, params, cookies):
         # E.g: {'CLASS_SRCH_WRK2_STRM$35$': '2195'}, where 2195 is Summer 2019
         params[Courses.IC_ACTIONS['term']] = term_code
@@ -285,7 +316,7 @@ class Courses:
         params.update(Courses._create_ic_action('term'))
         params.update(Courses.AJAX_PARAMS)
 
-        return Courses.http_request(
+        return Scraper.http_request(
             Courses.host,
             params=params,
             cookies=cookies
@@ -294,10 +325,9 @@ class Courses:
 
     @staticmethod
     def _remove_ajax_params(params):
-        for key in AJAX_PARAMS:
-            del params[key]
-
-        return params
+        return {
+            key: val for key, val in params.items() if not key in AJAX_PARAMS
+        }
 
 
     @staticmethod
