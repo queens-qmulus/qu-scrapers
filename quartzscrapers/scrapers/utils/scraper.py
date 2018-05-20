@@ -42,9 +42,9 @@ class Scraper:
             timeout=timeout,
             )
 
-        # parse the response's HTML via BeautifulSoup
+        # parse the response via BeautifulSoup after detecting its markup
         if parse:
-            return BeautifulSoup(response.text, 'html.parser')
+            return Scraper.soupify(response)
 
         return response
 
@@ -76,3 +76,27 @@ class Scraper:
             func_name=func_name,
             ex=ex
             ))
+
+
+    @staticmethod
+    def soupify(response):
+        '''
+        Detect if requests response format is HTML or XML, and return a
+        BeautifulSoup parser respective to response format.
+
+        Returns:
+            bs4.BeautifulSoup
+        '''
+
+        content_type = response.headers.get('content-type', 'unknown')
+
+        def get_soup(parser):
+            return BeautifulSoup(response.text, parser)
+
+        # XML markup
+        if 'xml' in response.headers.get('content-type', 'unknown'):
+            return get_soup('lxml')
+
+        # HTML markup
+        else:
+            return get_soup('html.parser')

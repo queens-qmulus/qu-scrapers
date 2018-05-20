@@ -78,7 +78,7 @@ class Courses:
         soup = Scraper.http_request(
             Courses.host,
             params=params,
-            cookies=cookies
+            cookies=cookies,
             )
 
         # Note: May not be necessary (yet). Should be moved further down
@@ -88,42 +88,78 @@ class Courses:
 
         years_and_terms = Courses._get_years_and_terms(soup)
 
-        # TODO: Check/verify from here
+        # TODO: Add year/term filtering for development testing
         for year, terms in years_and_terms.items():
-            for term_name, term_code in terms.items():
-                soup = Courses._update_term(term_code, params, cookies)
+            try:
+                for term_name, term_code in terms.items():
+                    try:
+                        print('Now parsing {} {}'.format(term_name, year))
 
-                # Update search params to get course list.
-                params = Courses._remove_ajax_params(params)
-                params.update(Courses._create_ic_action('class_search'))
+                        soup = Courses._update_term(term_code, params, cookies)
 
-                departments = Courses._get_departments(soup)
+                        # Update search params to get course list.
+                        params = Courses._remove_ajax_params(params)
+                        params.update(Courses._create_ic_action('class_search'))
 
-                for dept_code, dept_name in departments.items():
-                    # Update search payload with department code
-                    params['SSR_CLSRCH_WRK_SUBJECT_SRCH$0'] = dept_code
+                        departments = Courses._get_departments(soup)
 
-                    # Get course listing page for department
-                    soup = Scraper.http_request(
-                        Courses.host,
-                        params=params,
-                        cookies=cookies
-                        )
+                        # for dept_code, dept_name in departments.items():
+                        # TODO: Add department filtering for development testing
+                        # for dev only: for dept_code, dept_name in {dept_code: dept_name for dept_code, dept_name in departments.items() if dept_code in ['ANAT']}.items():
+                        for dept_code, dept_name in departments.items():
+                            try:
+                                print('{}: {}'.format(dept_code, dept_name))
 
-                    # too many results
-                    if not Courses._is_valid_search_page(soup):
-                        soup = Courses._handle_special_case_on_search(soup)
+                                # Update search payload with department code
+                                params['SSR_CLSRCH_WRK_SUBJECT_SRCH$0'] = dept_code
 
-                    courses = Courses._get_courses(soup)
-                    course_soups = Courses._get_course_list_as_soup(
-                        courses, soup)
+                                # Get course listing page for department
+                                soup = Scraper.http_request(
+                                    Courses.host,
+                                    params=params,
+                                    cookies=cookies
+                                    )
 
-                    for course_soup in course_soups:
-                        course_data = Courses.parse_course_data(course_soup)
+                                if not Courses._is_valid_search_page(soup):
+                                    continue
 
-                        # TODO: Check & persist data
+                                # too many results
+                                if Courses._is_special_search(soup):
+                                    print('TOO MANY RESULTS: {}: {}'.format(
+                                        dept_code, dept_name))
+                                    soup = Courses._handle_special_case_on_search(soup)
 
+                                # NOTE: Currently partitioned by lecture sections.
+                                # TODO: Decide course data schema for data represetation
+                                courses = soup.find_all(
+                                    'table', class_='PSLEVEL1GRIDNBONBO'
+                                    )
 
+                                course_soups = Courses._get_course_list_as_soup(
+                                    courses, soup, cookies)
+
+                                for course_soup in course_soups:
+                                    try:
+                                        course_data = Courses.parse_course_data(
+                                            course_soup
+                                            )
+
+                                        if course_data:
+                                            Scraper.save_data(results, 'courses')
+
+                                    except Exception as ex:
+                                        Scraper.handle_error(ex, 'scrape')
+
+                                Scraper.wait()
+
+                            except Exception as ex:
+                                Scraper.handle_error(ex, 'scrape')
+
+                    except Exception as ex:
+                        Scraper.handle_error(ex, 'scrape')
+
+            except Exception as ex:
+                Scraper.handle_error(ex, 'scrape')
 
 
     @staticmethod
@@ -137,7 +173,7 @@ class Courses:
             Object
         '''
 
-        print('Running web driver for authentication...')
+        print('Running webdriver for authentication...')
 
         chrome_options = Options()
         chrome_options.add_argument('--headless')
@@ -171,7 +207,7 @@ class Courses:
 
         driver.close()
 
-        print('Finished with wed driver')
+        print('Finished with webdriver')
 
         return session_cookies
 
@@ -316,6 +352,7 @@ class Courses:
         params.update(Courses._create_ic_action('term'))
         params.update(Courses.AJAX_PARAMS)
 
+        # Should be POST (it is not)
         return Scraper.http_request(
             Courses.host,
             params=params,
@@ -326,35 +363,67 @@ class Courses:
     @staticmethod
     def _remove_ajax_params(params):
         return {
-            key: val for key, val in params.items() if not key in AJAX_PARAMS
-        }
+            key: val for key, val in params.items()
+                if key not in Courses.AJAX_PARAMS.keys()
+            }
+
+
+    # Note: All Queen's courses seem to be valid. However, his is a good
+    # safety check either way
+    @staticmethod
+    def _is_valid_search_page(soup):
+        # check for valid search/page
+        if soup is None:
+            raise ParseError('is valid search page, soup is None')
+
+        err_message = soup.find('div', id='win1divDERIVED_CLSMSG_ERROR_TEXT')
+
+        if soup.find('td', id='PTBADPAGE_') or err_message:
+            if err_message:
+                print('Error on search: {err}'.format(err=err_message.text))
+            return False
+
+        return True
 
 
     @staticmethod
-    def _is_valid_search_page(soup, cookies):
-        pass
+    def _is_special_search(soup):
+        return (
+            soup.find('span', class_='SSSMSGINFOTEXT') or
+            soup.find('span', id='DERIVED_SSE_DSP_SSR_MSG_TEXT') or
+            soup.find('span', id='DERIVED_CLSMSG_ERROR_TEXT')
+            )
 
 
-    @staticmethod
-    def _is_special_search(soup, cookies):
-        pass
-
-
+    # TODO: Learn wtf this does
     @staticmethod
     def _handle_special_case_on_search(soup, cookies):
         pass
 
 
     @staticmethod
-    def _get_courses(soup, cookies):
-        pass
-
-
-    @staticmethod
     def _get_course_list_as_soup(courses, soup, cookies):
-        pass
+        course_soups = []
+        payload = Courses._get_hidden_params(soup)
+
+        for i in range(len(courses)):
+            try:
+                payload.update({'ICAction': 'MTG_CLASS_NBR${}'.format(i)})
+                course_soup = Scraper.http_request(
+                    Courses.host,
+                    params=payload,
+                    cookies=cookies
+                    )
+
+                course_soups.append(course_soup)
+                Scraper.wait()
+            except Exception as ex:
+                Scraper.handle_error('_get_course_list_as_soup')
+
+        return course_soups
 
 
+    #  TODO:
     @staticmethod
     def parse_course_data(soup):
         pass

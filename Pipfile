@@ -13,5 +13,6 @@ requests = "*"
 selenium = "*"
 chromedriver-binary = "*"
 retrying = "*"
+lxml = "*"
 
 [dev-packages]
