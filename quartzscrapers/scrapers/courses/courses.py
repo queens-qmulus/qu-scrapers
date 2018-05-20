@@ -61,7 +61,7 @@ class Courses:
         # bypass of SOLUS request redirects.
         cookies = Courses.login()
 
-        # Should be GET (it is)
+        # TODO: Should be GET (it is)
         soup = Scraper.http_request(
             Courses.host,
             params=params,
@@ -72,7 +72,7 @@ class Courses:
         params.update(hidden_params)
         params.update(Courses._create_ic_action('adv_search'))
 
-        # Should be POST (it is not)
+        # TODO: Should be POST (it is not)
         # TODO: Build in post requests into base scraper request function
         # Request 'search' page for list of courses.
         soup = Scraper.http_request(
@@ -352,7 +352,7 @@ class Courses:
         params.update(Courses._create_ic_action('term'))
         params.update(Courses.AJAX_PARAMS)
 
-        # Should be POST (it is not)
+        # TODO: Should be POST (it is not)
         return Scraper.http_request(
             Courses.host,
             params=params,
@@ -409,6 +409,8 @@ class Courses:
         for i in range(len(courses)):
             try:
                 payload.update({'ICAction': 'MTG_CLASS_NBR${}'.format(i)})
+
+                # TODO: Should be GET (it is)
                 course_soup = Scraper.http_request(
                     Courses.host,
                     params=payload,
