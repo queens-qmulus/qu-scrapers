@@ -17,7 +17,8 @@ class Courses:
     A scraper for Queen's courses.
     '''
 
-    host = 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/HRMS/c/SA_LEARNER_SERVICES.CLASS_SEARCH.GBL'
+    # host = 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/HRMS/c/SA_LEARNER_SERVICES.CLASS_SEARCH.GBL'
+    host = 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/SA/c/SA_LEARNER_SERVICES.SSS_BROWSE_CATLG_P.GBL' # new
 
     headers = {
         'Pragma': 'no-cache',
@@ -26,7 +27,8 @@ class Courses:
         'Upgrade-Insecure-Requests': '1',
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Referer': 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/HRMS/c/SA_LEARNER_SERVICES.SSS_STUDENT_CENTER.GBL?PortalActualURL=https%3a%2f%2fsaself.ps.queensu.ca%2fpsc%2fsaself%2fEMPLOYEE%2fHRMS%2fc%2fSA_LEARNER_SERVICES.SSS_STUDENT_CENTER.GBL&PortalContentURL=https%3a%2f%2fsaself.ps.queensu.ca%2fpsc%2fsaself%2fEMPLOYEE%2fHRMS%2fc%2fSA_LEARNER_SERVICES.SSS_STUDENT_CENTER.GBL&PortalContentProvider=HRMS&PortalCRefLabel=Student%20Center&PortalRegistryName=EMPLOYEE&PortalServletURI=https%3a%2f%2fsaself.ps.queensu.ca%2fpsp%2fsaself%2f&PortalURI=https%3a%2f%2fsaself.ps.queensu.ca%2fpsc%2fsaself%2f&PortalHostNode=HRMS&NoCrumbs=yes&PortalKeyStruct=yes',
+        # 'Referer': 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/HRMS/c/SA_LEARNER_SERVICES.SSS_STUDENT_CENTER.GBL?PortalActualURL=https%3a%2f%2fsaself.ps.queensu.ca%2fpsc%2fsaself%2fEMPLOYEE%2fHRMS%2fc%2fSA_LEARNER_SERVICES.SSS_STUDENT_CENTER.GBL&PortalContentURL=https%3a%2f%2fsaself.ps.queensu.ca%2fpsc%2fsaself%2fEMPLOYEE%2fHRMS%2fc%2fSA_LEARNER_SERVICES.SSS_STUDENT_CENTER.GBL&PortalContentProvider=HRMS&PortalCRefLabel=Student%20Center&PortalRegistryName=EMPLOYEE&PortalServletURI=https%3a%2f%2fsaself.ps.queensu.ca%2fpsp%2fsaself%2f&PortalURI=https%3a%2f%2fsaself.ps.queensu.ca%2fpsc%2fsaself%2f&PortalHostNode=HRMS&NoCrumbs=yes&PortalKeyStruct=yes',
+        'Referer': 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/SA/c/SA_LEARNER_SERVICES.CLASS_SEARCH.GBL?Page=SSR_CLSRCH_ENTRY&Action=U', #new
         'Connection': 'keep-alive',
         'Cache-Control': 'no-cache',
         }
@@ -39,20 +41,33 @@ class Courses:
 
     AJAX_PARAMS = {
         'ICAJAX': '1',
-        'ICNAVTYPEDROPDOWN': '0'
+        'ICNAVTYPEDROPDOWN': '1'
         }
+
+    LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
     @staticmethod
     def scrape():
         '''Update database records for courses scraper'''
 
+        # MAJOR TODO: Search by course catalogue rather than by ambiguous
+        # search page
+
         # SOLUS parameters that influence what's seen on response page after
         # a request
+
+        # old
+        # params = {
+        #     'Page': 'SSR_CLSRCH_ENTRY',
+        #     'Action': 'U',
+        #     'ExactKeys': 'Y',
+        #     'TargetFrameName': 'None',
+        #     }
+
+        # new
         params = {
-            'Page': 'SSR_CLSRCH_ENTRY',
+            'Page': 'SSS_BROWSE_CATLG',
             'Action': 'U',
-            'ExactKeys': 'Y',
-            'TargetFrameName': 'None',
             }
 
         print('Starting Courses scrape')
@@ -70,96 +85,138 @@ class Courses:
 
         hidden_params = Courses._get_hidden_params(soup)
         params.update(hidden_params)
-        params.update(Courses._create_ic_action('adv_search'))
 
-        # TODO: Should be POST (it is not)
-        # TODO: Build in post requests into base scraper request function
-        # Request 'search' page for list of courses.
-        soup = Scraper.http_request(
-            Courses.host,
-            params=params,
-            cookies=cookies,
-            )
+# ========================= NEW IMPLEMENTATION START ==========================
 
-        # Note: May not be necessary (yet). Should be moved further down
-        # initially_selected_term = Courses._get_selected_term(soup)
-        advanced_search_params = Courses._get_advanced_search_params()
-        params.update(advanced_search_params)
+        # Gets list of ICAction letters representing each letter category for
+        # all department listings. E.g:, A will list AGHE, ANAT, etc... B will
+        # list BIOL, BCMP, etc...
 
-        years_and_terms = Courses._get_years_and_terms(soup)
+        # Click and expand a certain letter to see departments
+        # E.G: 'A': has AGHE, ANAT... 'B' has BIOL, BCMP..., etc
+        for dept_letter in Courses.LETTERS: # Status: Verified
+            params.update(Courses.AJAX_PARAMS)
+            departments = Courses._get_departments_2(
+                soup, dept_letter, params, cookies
+                )
 
-        # TODO: Add year/term filtering for development testing
-        for year, terms in years_and_terms.items():
-            try:
-                for term_name, term_code in terms.items():
-                    try:
-                        print('Now parsing {} {}'.format(term_name, year))
+            # For each department under a certain letter search
+            for department in departments: # Status: Pending
+                dept_code, dept_name = department.find(
+                    'span',
+                    id=re.compile(r'DERIVED_SSS_BCC_GROUP_BOX_1\$147\$\$span\$')
+                    ).text.strip().split(' - ')
 
-                        soup = Courses._update_term(term_code, params, cookies)
+                print('Department: {code} - {name}'.format(
+                    code=dept_code, name=dept_name
+                    ))
+                print('==============================================')
 
-                        # Update search params to get course list.
-                        params = Courses._remove_ajax_params(params)
-                        params.update(Courses._create_ic_action('class_search'))
+                courses = Courses._get_courses(department)
 
-                        departments = Courses._get_departments(soup)
+                # For each course under a certain department
+                for course in courses: # Status: Verified
+                    course_soup_rows = course.find_all('td')
 
-                        # for dept_code, dept_name in departments.items():
-                        # TODO: Add department filtering for development testing
-                        # for dev only: for dept_code, dept_name in {dept_code: dept_name for dept_code, dept_name in departments.items() if dept_code in ['ANAT']}.items():
-                        for dept_code, dept_name in departments.items():
-                            try:
-                                print('{}: {}'.format(dept_code, dept_name))
+                    course_number = course_soup_rows[1].find('a')['id']
+                    course_code = course_soup_rows[1].find('a').text.strip()
+                    course_name = course_soup_rows[2].find('a').text.strip()
+                    # ic_action = Course._create_ic_action_2(course_number)
 
-                                # Update search payload with department code
-                                params['SSR_CLSRCH_WRK_SUBJECT_SRCH$0'] = dept_code
+                    print('({num}) {dept} {code}: {name}'.format(
+                        num=course_number,
+                        dept=dept_code,
+                        code=course_code,
+                        name=course_name,
+                        ))
 
-                                # Get course listing page for department
-                                soup = Scraper.http_request(
-                                    Courses.host,
-                                    params=params,
-                                    cookies=cookies
-                                    )
+                print('\n')
 
-                                if not Courses._is_valid_search_page(soup):
-                                    continue
+        print('\nShallow course scrape complete')
 
-                                # too many results
-                                if Courses._is_special_search(soup):
-                                    print('TOO MANY RESULTS: {}: {}'.format(
-                                        dept_code, dept_name))
-                                    soup = Courses._handle_special_case_on_search(soup)
 
-                                # NOTE: Currently partitioned by lecture sections.
-                                # TODO: Decide course data schema for data represetation
-                                courses = soup.find_all(
-                                    'table', class_='PSLEVEL1GRIDNBONBO'
-                                    )
 
-                                course_soups = Courses._get_course_list_as_soup(
-                                    courses, soup, cookies)
+# ========================== NEW IMPLEMENTATION END ===========================
 
-                                for course_soup in course_soups:
-                                    try:
-                                        course_data = Courses.parse_course_data(
-                                            course_soup
-                                            )
+        # # Note: May not be necessary (yet). Should be moved further down
+        # # initially_selected_term = Courses._get_selected_term(soup)
+        # advanced_search_params = Courses._get_advanced_search_params()
+        # params.update(advanced_search_params)
 
-                                        if course_data:
-                                            Scraper.save_data(results, 'courses')
+        # years_and_terms = Courses._get_years_and_terms(soup)
 
-                                    except Exception as ex:
-                                        Scraper.handle_error(ex, 'scrape')
+        # # TODO: Add year/term filtering for development testing
+        # for year, terms in years_and_terms.items():
+        #     try:
+        #         for term_name, term_code in terms.items():
+        #             try:
+        #                 print('Now parsing {} {}'.format(term_name, year))
 
-                                Scraper.wait()
+        #                 soup = Courses._update_term(term_code, params, cookies)
 
-                            except Exception as ex:
-                                Scraper.handle_error(ex, 'scrape')
+        #                 # Update search params to get course list.
+        #                 params = Courses._remove_ajax_params(params)
+        #                 params.update(Courses._create_ic_action('class_search'))
 
-                    except Exception as ex:
-                        Scraper.handle_error(ex, 'scrape')
+        #                 departments = Courses._get_departments(soup)
 
-            except Exception as ex:
-                Scraper.handle_error(ex, 'scrape')
+        #                 # for dept_code, dept_name in departments.items():
+        #                 # TODO: Add department filtering for development testing
+        #                 # for dev only: for dept_code, dept_name in {dept_code: dept_name for dept_code, dept_name in departments.items() if dept_code in ['ANAT']}.items():
+        #                 for dept_code, dept_name in departments.items():
+        #                     try:
+        #                         print('{}: {}'.format(dept_code, dept_name))
+
+        #                         # Update search payload with department code
+        #                         params['SSR_CLSRCH_WRK_SUBJECT_SRCH$0'] = dept_code
+
+        #                         # Get course listing page for department
+        #                         soup = Scraper.http_request(
+        #                             Courses.host,
+        #                             params=params,
+        #                             cookies=cookies
+        #                             )
+
+        #                         if not Courses._is_valid_search_page(soup):
+        #                             continue
+
+        #                         # too many results
+        #                         if Courses._is_special_search(soup):
+        #                             print('TOO MANY RESULTS: {}: {}'.format(
+        #                                 dept_code, dept_name))
+        #                             soup = Courses._handle_special_case_on_search(soup)
+
+        #                         # NOTE: Currently partitioned by lecture sections.
+        #                         # TODO: Decide course data schema for data represetation
+        #                         courses = soup.find_all(
+        #                             'table', class_='PSLEVEL1GRIDNBONBO'
+        #                             )
+
+        #                         course_soups = Courses._get_course_list_as_soup(
+        #                             courses, soup, cookies)
+
+        #                         for course_soup in course_soups:
+        #                             try:
+        #                                 course_data = Courses.parse_course_data(
+        #                                     course_soup
+        #                                     )
+
+        #                                 if course_data:
+        #                                     Scraper.save_data(results, 'courses')
+
+        #                             except Exception as ex:
+        #                                 Scraper.handle_error(ex, 'scrape')
+
+        #                         Scraper.wait()
+
+        #                     except Exception as ex:
+        #                         Scraper.handle_error(ex, 'scrape')
+
+        #             except Exception as ex:
+        #                 Scraper.handle_error(ex, 'scrape')
+
+        #     except Exception as ex:
+        #         Scraper.handle_error(ex, 'scrape')
 
 
     @staticmethod
@@ -249,6 +306,19 @@ class Courses:
         '''
 
         return {'ICAction': Courses.IC_ACTIONS[action]}
+
+    @staticmethod
+    def _create_ic_action_2(action):
+        '''
+        Creates object representing current state of ICAction parameter.
+        SOLUS uses dynamic parameters to represent user state given certain
+        actions they take.
+
+        Returns:
+            Object
+        '''
+
+        return {'ICAction': action}
 
 
     @staticmethod
@@ -395,7 +465,7 @@ class Courses:
             )
 
 
-    # TODO: Learn wtf this does
+    # Note: May not be necessary
     @staticmethod
     def _handle_special_case_on_search(soup, cookies):
         pass
@@ -429,3 +499,42 @@ class Courses:
     @staticmethod
     def parse_course_data(soup):
         pass
+
+# ============================= NEW IMPLEMENTATION ============================
+
+    # Status: Verified
+    @staticmethod
+    def _get_departments_2(soup, letter, params, cookies):
+        def update_params_and_make_request(soup, payload, cookies, ic_action):
+            payload = Courses._get_hidden_params(soup)
+            payload.update(ic_action)
+
+            soup = Scraper.http_request(
+                Courses.host,
+                params=payload,
+                cookies=cookies,
+                )
+
+            Scraper.wait()
+
+            return soup
+
+        # Get all departments for a certain letter
+        ic_action = {'ICAction': 'DERIVED_SSS_BCC_SSR_ALPHANUM_{}'.format(letter)}
+        soup = update_params_and_make_request(soup, params, cookies, ic_action)
+
+        # Expand all department courses
+        ic_action = {'ICAction': 'DERIVED_SSS_BCC_SSS_EXPAND_ALL$97$'}
+        soup = update_params_and_make_request(soup, params, cookies, ic_action)
+
+        departments = soup.find_all(
+            'table', id=re.compile(r'ACE_DERIVED_SSS_BCC_GROUP_BOX_1')
+            )
+
+        return departments
+
+
+    # Status: Verified
+    @staticmethod
+    def _get_courses(department_soup):
+        return department_soup.find_all('tr', id=re.compile(r'trCOURSE_LIST'))

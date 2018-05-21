@@ -34,6 +34,8 @@ class Scraper:
             bs4.element.Tag ||
         '''
 
+        # TODO: Build in post requests into base scraper request function
+        # Request 'search' page for list of courses.
         response = Scraper.session.get(
             url,
             params=params,
