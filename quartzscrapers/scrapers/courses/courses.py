@@ -277,7 +277,7 @@ class Courses:
         ENROLLMENT_INFO_MAP = {
             'Enrollment Requirement': 'requirements',
             'Add Consent': 'add_consent',
-            'DROP Consent': 'drop_consent',
+            'Drop Consent': 'drop_consent',
             }
 
         soup = Scraper.http_request(
