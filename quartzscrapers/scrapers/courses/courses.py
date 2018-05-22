@@ -71,7 +71,7 @@ class Courses:
         for dept_letter in Courses.LETTERS: # Status: Verified
             params.update(Courses.AJAX_PARAMS)
 
-            departments = Courses._get_departments(
+            departments, checkboxes = Courses._get_departments(
                 soup, dept_letter, params, cookies
                 )
 
@@ -108,24 +108,22 @@ class Courses:
                         name=course_name,
                         ))
 
-                    params = Courses._remove_params(params, Courses.START_PARAMS.keys())
-
-                    ptus_params = Courses._get_ptus_params(soup)
-
-                    params.update(ic_action)
-                    params.update(ptus_params)
-                    params.update({'DERIVED_SSTSNAV_SSTS_MAIN_GOTO$27$': '9999'})
-                    params.update({'ICBcDomData': 'C~HC_SSS_STUDENT_CENTER~EMPLOYEE~SA~SA_LEARNER_SERVICES.SSS_STUDENT_CENTER.GBL~UnknownValue~Student Center~UnknownValue~UnknownValue~https://saself.ps.queensu.ca/psp/saself/EMPLOYEE/SA/c/SA_LEARNER_SERVICES.SSS_STUDENT_CENTER.GBL~UnknownValue*F~CO_EMPLOYEE_SELF_SERVICE~EMPLOYEE~SA~UnknownValue~UnknownValue~Self Service~UnknownValue~UnknownValue~https://saself.ps.queensu.ca/psp/saself/EMPLOYEE/SA/s/WEBLIB_PT_NAV.ISCRIPT1.FieldFormula.IScript_PT_NAV_INFRAME?pt_fname=CO_EMPLOYEE_SELF_SERVICE&c=SS1fKKYxRTcUmqLHOdRWZg%3d%3d&FolderPath=PORTAL_ROOT_OBJECT.CO_EMPLOYEE_SELF_SERVICE&IsFolder=true~UnknownValue'})
-
                     import pdb; pdb.set_trace()
 
                     # TODO: Should be POST (it isn't)
-                    soup2 = Scraper.http_request(
-                        Courses.host,
-                        params=params,
-                        cookies=cookies
-                        )
+                    # Note: Selecting course only takes one parameter, which
+                    # is the ICAction
+                    base_info = {
+                        'department': dept_code,
+                        'course_code': course_code,
+                        'course_name': course_name,
+                        }
 
+                    course_info = Courses._parse_course_data(
+                        ic_action,
+                        cookies,
+                        base_info,
+                        )
 
                 print('\n')
 
@@ -210,6 +208,7 @@ class Courses:
         return params
 
 
+    # Currently not in use
     @staticmethod
     def _get_ptus_params(soup):
         params = {}
@@ -222,6 +221,7 @@ class Courses:
         return params
 
 
+    # Currently not in use
     @staticmethod
     def _remove_params(params, params_keys):
         return {
@@ -260,7 +260,11 @@ class Courses:
             'table', id=re.compile(r'ACE_DERIVED_SSS_BCC_GROUP_BOX_1')
             )
 
-        return departments
+        checkboxes = soup.find_all(
+            'input', id=re.compile(r'CRSE_SEL_CHECKBOX\$chk\$')
+            )
+
+        return departments, checkboxes
 
 
     # Status: Verified
@@ -269,8 +273,35 @@ class Courses:
         return department_soup.find_all('tr', id=re.compile(r'trCOURSE_LIST'))
 
 
-    #  TODO: Write it
+    # Status: Pending
     @staticmethod
-    def parse_course_data(soup):
-        pass
+    def _parse_course_data(ic_action, cookies, base_info):
+        soup = Scraper.http_request(
+            Courses.host,
+            params=ic_action,
+            cookies=cookies
+            )
+
+        # TODO: Fill these
+        stub = None
+        stub_dict = {}
+
+        data = {
+            # NOTE: course_id not shown on generic course page. Must do deep
+            # scrape of course sections for course_id
+            'course_id': stub,
+            'department': base_info['dept_code'],
+            'course_code': base_info['course_code'],
+            'course_name': base_info['course_name'],
+            'description': stub,
+            'grading_basis': stub,
+            'course_components': stub_dict,
+            'requirements': stub,
+            'academic_level': stub,
+            'academic_group': stub,
+            'units': stub,
+            'CEAB': stub_dict,
+            }
+
+        return data
 
