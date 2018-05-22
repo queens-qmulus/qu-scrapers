@@ -25,13 +25,14 @@ class Scraper:
     # backoff by waiting 2 ^ (x * 1000) milliseconds between each retry, up to
     # 30 seconds, then 10 seconds afterwards
     @staticmethod
-    @retry(wait_exponential_multiplier=1000, wait_exponential_max=30000)
-    def http_request(url, params=None, cookies=None, headers=None, timeout=20, parse=True):
+    # @retry(wait_exponential_multiplier=1000, wait_exponential_max=30000)
+    def http_request(url, params=None, cookies=None, headers=None, timeout=10000, parse=True): # TODO: Change timeout back to default
         '''
         Requests given URL for HTML or BeautifulSoup response
 
         Returns:
-            bs4.element.Tag ||
+            bs4.element.Tag             if parse=True
+            requests.models.Response    otherwise
         '''
 
         # TODO: Build in post requests into base scraper request function
