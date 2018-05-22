@@ -108,8 +108,6 @@ class Courses:
                         name=course_name,
                         ))
 
-                    import pdb; pdb.set_trace()
-
                     # TODO: Should be POST (it isn't)
                     # Note: Selecting course only takes one parameter, which
                     # is the ICAction
@@ -276,31 +274,82 @@ class Courses:
     # Status: Pending
     @staticmethod
     def _parse_course_data(ic_action, cookies, base_info):
+        ENROLLMENT_INFO_MAP = {
+            'Enrollment Requirement': 'requirements',
+            'Add Consent': 'add_consent',
+            'DROP Consent': 'drop_consent',
+            }
+
         soup = Scraper.http_request(
             Courses.host,
             params=ic_action,
             cookies=cookies
             )
 
-        # TODO: Fill these
-        stub = None
-        stub_dict = {}
+        description = soup.find('span', id=re.compile('SSR_CRSE_OFF_VW_DESCRLONG')).text.strip()
+        units = float(soup.find('span', id=re.compile('DERIVED_CRSECAT_UNITS_RANGE')).text.strip())
+        grading_basis = soup.find('span', id=re.compile('SSR_CRSE_OFF_VW_GRADING_BASIS')).text.strip()
+        academic_level = soup.find('span', id=re.compile('SSR_CRSE_OFF_VW_ACAD_CAREER')).text.strip()
+        academic_group = soup.find('span', id=re.compile('ACAD_GROUP_TBL_DESCR')).text.strip()
+        academic_org = soup.find('span', id=re.compile('ACAD_ORG_TBL_DESCR')).text.strip()
+
+        # TODO: Generalize into inner function
+        course_components: {}
+
+        course_components_rows = soup.find('table', id=re.compile('ACE_SSR_DUMMY_RECVW')).find_all('tr')
+
+        for course_component_row in course_components_rows:
+            # first cell is metadata only
+            section, required = course_component_row.find_all('td')[1:]
+            course_components.update({section: required})
+
+        # TODO: Generalize into inner function
+        enroll_info = {}
+
+        # first row is metadata only
+        enrollment_info_rows =  soup.find('table', id='ACE_DERIVED_CRSECAT_SSR_GROUP2$0').find_all('tr')[1:]
+
+        for row in enrollment_info_rows:
+            enroll_name_raw, enroll_desc_raw = row.find_all('div', id=re.compile('win0divSSR_CRSE_OFF_VW'))
+            enroll_name = enroll_name_raw.txet.strip()
+            enroll_desc = enroll_desc_raw.text.strip()
+
+            enroll_info.update({ENROLLMENT_INFO_MAP[enroll_name]: enroll_desc})
+
+        # TODO: Generalize into inner function
+        ceab_dict = {}
+
+        ceab_units = (soup
+            .find('table', id=re.compile('ACE_DERIVED_CLSRCH')) # CEAB table
+            .find_all('tr')[1]  # only row with data is 2nd row
+            .find_all('td')[1:] # first cell is metadata
+            )
+
+        # Iteration by twos. Format: Name, Units
+        for i in range(0, len(ceab_units), 2):
+            name = ceab_units[i].text.strip().strip(':')
+            units = ceab_units[i].text.strip().strip(':')
+
+            ceab_dict.update({name: float(units) if units else 0})
 
         data = {
             # NOTE: course_id not shown on generic course page. Must do deep
             # scrape of course sections for course_id
-            'course_id': stub,
+            'course_id': None,
             'department': base_info['dept_code'],
             'course_code': base_info['course_code'],
             'course_name': base_info['course_name'],
-            'description': stub,
-            'grading_basis': stub,
-            'course_components': stub_dict,
-            'requirements': stub,
-            'academic_level': stub,
-            'academic_group': stub,
-            'units': stub,
-            'CEAB': stub_dict,
+            'description': description,
+            'grading_basis': grading_basis,
+            'course_components': course_components,
+            'requirements': enroll_info.get('stub', ''),
+            'add_consent': enroll_info.get('add_consent', ''),
+            'drop_consent': enroll_info.get('drop_consent', ''),
+            'academic_level': academic_level,
+            'academic_group': academic_group,
+            'academic_org': academic_org,
+            'units': units,
+            'CEAB': ceab_dict,
             }
 
         return data
