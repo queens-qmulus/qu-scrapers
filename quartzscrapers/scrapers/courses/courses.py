@@ -6,6 +6,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
 from urllib.parse import urljoin
+from collections import OrderedDict
 
 from ..utils import Scraper
 from ..utils.config import QUEENS_USERNAME, QUEENS_PASSWORD
@@ -81,7 +82,7 @@ class Courses:
             for department in departments: # Status: Verified
                 dept_name = department.find(
                     'span',
-                    id=re.compile(r'DERIVED_SSS_BCC_GROUP_BOX_1\$147\$\$span\$')
+                    id=re.compile('DERIVED_SSS_BCC_GROUP_BOX_1\$147\$\$span\$')
                     ).text.strip()
 
                 name_index = dept_name.find('-')
@@ -112,7 +113,7 @@ class Courses:
                     # Note: Selecting course only takes one parameter, which
                     # is the ICAction
                     base_info = {
-                        'department': dept_code,
+                        'dept_code': dept_code,
                         'course_code': course_code,
                         'course_name': course_name,
                         }
@@ -192,11 +193,11 @@ class Courses:
         '''
 
         params = {}
-        hidden = soup.find('div', id=re.compile(r'win\ddivPSHIDDENFIELDS'))
+        hidden = soup.find('div', id=re.compile('win\ddivPSHIDDENFIELDS'))
 
         if not hidden:
             hidden = soup.find(
-                'field', id=re.compile(r'win\ddivPSHIDDENFIELDS')
+                'field', id=re.compile('win\ddivPSHIDDENFIELDS')
                 )
 
         params.update({
@@ -210,14 +211,13 @@ class Courses:
     @staticmethod
     def _get_ptus_params(soup):
         params = {}
-        ptus_list = soup.find_all('input', id=re.compile(r'ptus'))
+        ptus_list = soup.find_all('input', id=re.compile('ptus'))
 
         params.update({
             x.get('name'): x.get('value') for x in ptus_list
             })
 
         return params
-
 
     # Currently not in use
     @staticmethod
@@ -255,30 +255,84 @@ class Courses:
         soup = update_params_and_make_request(soup, params, cookies, ic_action)
 
         departments = soup.find_all(
-            'table', id=re.compile(r'ACE_DERIVED_SSS_BCC_GROUP_BOX_1')
+            'table', id=re.compile('ACE_DERIVED_SSS_BCC_GROUP_BOX_1')
             )
 
         checkboxes = soup.find_all(
-            'input', id=re.compile(r'CRSE_SEL_CHECKBOX\$chk\$')
+            'input', id=re.compile('CRSE_SEL_CHECKBOX\$chk\$')
             )
 
         return departments, checkboxes
 
-
     # Status: Verified
     @staticmethod
     def _get_courses(department_soup):
-        return department_soup.find_all('tr', id=re.compile(r'trCOURSE_LIST'))
+        return department_soup.find_all('tr', id=re.compile('trCOURSE_LIST'))
 
 
-    # Status: Pending
+    # Status: Verified
     @staticmethod
     def _parse_course_data(ic_action, cookies, base_info):
-        ENROLLMENT_INFO_MAP = {
-            'Enrollment Requirement': 'requirements',
-            'Add Consent': 'add_consent',
-            'Drop Consent': 'drop_consent',
-            }
+
+        # All HTML id's used via regular expressions
+        REGEX_DESC = re.compile('SSR_CRSE_OFF_VW_DESCRLONG')
+        REGEX_UNITS = re.compile('DERIVED_CRSECAT_UNITS_RANGE')
+        REGEX_BASIS = re.compile('SSR_CRSE_OFF_VW_GRADING_BASIS')
+        REGEX_AC_LVL = re.compile('SSR_CRSE_OFF_VW_ACAD_CAREER')
+        REGEX_AC_GRP = re.compile('ACAD_GROUP_TBL_DESCR')
+        REGEX_AC_ORG = re.compile('ACAD_ORG_TBL_DESCR')
+        REGEX_CRSE_CMPS  = re.compile('ACE_SSR_DUMMY_RECVW')
+        REGEX_ENROLL_TBL = re.compile('ACE_DERIVED_CRSECAT_SSR_GROUP2')
+        REGEX_ENROLL_DIV = re.compile('win0divSSR_CRSE_OFF_VW')
+
+        def create_dict(rows, tag, tag_id=None, start=0, enroll=False):
+            ENROLLMENT_INFO_MAP = {
+                'Enrollment Requirement': 'requirements',
+                'Add Consent': 'add_consent',
+                'Drop Consent': 'drop_consent',
+                }
+
+            data = {}
+
+            for row in rows:
+                name_raw, desc_raw = row.find_all(tag, id=tag_id)[start:]
+                name = name_raw.text.strip()
+                desc = desc_raw.text.strip()
+
+                if enroll:
+                    name = ENROLLMENT_INFO_MAP[name]
+
+                data.update({name: desc})
+
+            return data
+
+
+        def create_ceab_dict(soup):
+            CEAB_MAP = {
+                'Basic Sci': 'basic_sci',
+                'Comp St': 'comp_st',
+                'End Des': 'end_des',
+                'Eng Sci': 'eng_sci',
+                'Math': 'math',
+                }
+
+            ceab_data = {}
+            ceab_units = (
+                soup
+                    .find('table', id=re.compile('ACE_DERIVED_CLSRCH')) # CEAB table
+                    .find_all('tr')[1]  # only row with data is 2nd row
+                    .find_all('td')[1:] # first cell is metadata
+                )
+
+            # Iteration by twos. Format: Name, Units
+            for i in range(0, len(ceab_units), 2):
+                name = ceab_units[i].text.strip().strip(':')
+                units = ceab_units[i + 1].text.strip().strip(':')
+
+                ceab_data.update({CEAB_MAP[name]: float(units) if units else 0})
+
+            return ceab_data
+
 
         soup = Scraper.http_request(
             Courses.host,
@@ -286,51 +340,19 @@ class Courses:
             cookies=cookies
             )
 
-        description = soup.find('span', id=re.compile('SSR_CRSE_OFF_VW_DESCRLONG')).text.strip()
-        units = float(soup.find('span', id=re.compile('DERIVED_CRSECAT_UNITS_RANGE')).text.strip())
-        grading_basis = soup.find('span', id=re.compile('SSR_CRSE_OFF_VW_GRADING_BASIS')).text.strip()
-        academic_level = soup.find('span', id=re.compile('SSR_CRSE_OFF_VW_ACAD_CAREER')).text.strip()
-        academic_group = soup.find('span', id=re.compile('ACAD_GROUP_TBL_DESCR')).text.strip()
-        academic_org = soup.find('span', id=re.compile('ACAD_ORG_TBL_DESCR')).text.strip()
+        description = soup.find('span', id=REGEX_DESC).text.strip()
+        units = float(soup.find('span', id=REGEX_UNITS).text.strip())
+        grading_basis = soup.find('span', id=REGEX_BASIS).text.strip()
+        academic_level = soup.find('span', id=REGEX_AC_LVL).text.strip()
+        academic_group = soup.find('span', id=REGEX_AC_GRP).text.strip()
+        academic_org = soup.find('span', id=REGEX_AC_ORG).text.strip()
+        course_components_rows = soup.find('table', id=REGEX_CRSE_CMPS).find_all('tr')[1:]
+        enrollment_info_rows =  soup.find('table', id=REGEX_ENROLL_TBL).find_all('tr')[1:]
 
-        # TODO: Generalize into inner function
-        course_components: {}
-
-        course_components_rows = soup.find('table', id=re.compile('ACE_SSR_DUMMY_RECVW')).find_all('tr')
-
-        for course_component_row in course_components_rows:
-            # first cell is metadata only
-            section, required = course_component_row.find_all('td')[1:]
-            course_components.update({section: required})
-
-        # TODO: Generalize into inner function
-        enroll_info = {}
-
-        # first row is metadata only
-        enrollment_info_rows =  soup.find('table', id='ACE_DERIVED_CRSECAT_SSR_GROUP2$0').find_all('tr')[1:]
-
-        for row in enrollment_info_rows:
-            enroll_name_raw, enroll_desc_raw = row.find_all('div', id=re.compile('win0divSSR_CRSE_OFF_VW'))
-            enroll_name = enroll_name_raw.txet.strip()
-            enroll_desc = enroll_desc_raw.text.strip()
-
-            enroll_info.update({ENROLLMENT_INFO_MAP[enroll_name]: enroll_desc})
-
-        # TODO: Generalize into inner function
-        ceab_dict = {}
-
-        ceab_units = (soup
-            .find('table', id=re.compile('ACE_DERIVED_CLSRCH')) # CEAB table
-            .find_all('tr')[1]  # only row with data is 2nd row
-            .find_all('td')[1:] # first cell is metadata
-            )
-
-        # Iteration by twos. Format: Name, Units
-        for i in range(0, len(ceab_units), 2):
-            name = ceab_units[i].text.strip().strip(':')
-            units = ceab_units[i].text.strip().strip(':')
-
-            ceab_dict.update({name: float(units) if units else 0})
+        # the following are dictionaries of data
+        course_components = create_dict(course_components_rows, 'td', start=1)
+        enroll_info = create_dict(enrollment_info_rows, 'div', tag_id=REGEX_ENROLL_DIV, enroll=True)
+        ceab_data = create_ceab_dict(soup)
 
         data = {
             # NOTE: course_id not shown on generic course page. Must do deep
@@ -349,8 +371,9 @@ class Courses:
             'academic_group': academic_group,
             'academic_org': academic_org,
             'units': units,
-            'CEAB': ceab_dict,
+            'CEAB': ceab_data,
             }
 
-        return data
+        # retain key-value order of dictionary
+        return OrderedDict(data)
 
