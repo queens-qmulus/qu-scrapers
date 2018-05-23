@@ -284,6 +284,7 @@ class Courses:
         REGEX_CRSE_CMPS  = re.compile('ACE_SSR_DUMMY_RECVW')
         REGEX_ENROLL_TBL = re.compile('ACE_DERIVED_CRSECAT_SSR_GROUP2')
         REGEX_ENROLL_DIV = re.compile('win0divSSR_CRSE_OFF_VW')
+        REGEX_CEAB = re.compile('ACE_DERIVED_CLSRCH')
 
         def create_dict(rows, tag, tag_id=None, start=0, enroll=False):
             ENROLLMENT_INFO_MAP = {
@@ -319,8 +320,8 @@ class Courses:
             ceab_data = {}
             ceab_units = (
                 soup
-                    .find('table', id=re.compile('ACE_DERIVED_CLSRCH')) # CEAB table
-                    .find_all('tr')[1]  # only row with data is 2nd row
+                    .find('table', id=REGEX_CEAB) # CEAB table
+                    .find_all('tr')[1]  # data is only in 2nd row
                     .find_all('td')[1:] # first cell is metadata
                 )
 
