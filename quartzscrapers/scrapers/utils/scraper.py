@@ -59,7 +59,11 @@ class Scraper:
         client = MongoClient('localhost', 27017)
         db = client['knowledge']
 
-        db[collection].insert_many(data)
+        if type(data) == list:
+            db[collection].insert_many(data)
+        else:
+            db[collection].insert(data)
+
         print('\nData saved\n')
 
     @staticmethod

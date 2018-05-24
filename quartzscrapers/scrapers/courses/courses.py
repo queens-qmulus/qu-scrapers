@@ -12,7 +12,6 @@ from ..utils import Scraper
 from ..utils.config import QUEENS_USERNAME, QUEENS_PASSWORD
 from .courses_helpers import noop
 
-
 class Courses:
     '''
     A scraper for Queen's courses.
@@ -55,82 +54,128 @@ class Courses:
 
         # Imitate an actual login and grab generated cookies, which allows the
         # bypass of SOLUS request redirects.
-        cookies = Courses.login()
+        cookies = Courses._login()
 
         # TODO: Should be GET (it is)
-        soup = Scraper.http_request(
-            Courses.host,
-            params=params,
-            cookies=cookies
-            )
+        soup = Courses._request_page(params, cookies)
 
         hidden_params = Courses._get_hidden_params(soup)
         params.update(hidden_params)
+        params.update(Courses.AJAX_PARAMS)
 
         # Click and expand a certain letter to see departments
         # E.G: 'A': has AGHE, ANAT... 'B' has BIOL, BCMP..., etc
-        for dept_letter in Courses.LETTERS: # Status: Verified
-            params.update(Courses.AJAX_PARAMS)
+        for dept_letter in Courses.LETTERS[12]: # Status: Verified, temporary
+            try:
+                departments = Courses._get_departments(
+                    soup, dept_letter, params, cookies
+                    )
 
-            departments, checkboxes = Courses._get_departments(
-                soup, dept_letter, params, cookies
-                )
+                print('Got departments. Parsing each department')
 
-            print('Got departments. Parsing each department')
+                # For each department under a certain letter search
+                for department in departments[1:]: # Status: Verified, temporary
+                    try:
+                        dept_name = department.find(
+                            'span',
+                            id=re.compile('DERIVED_SSS_BCC_GROUP_BOX_1\$147\$\$span\$')
+                            ).text.strip()
 
-            # For each department under a certain letter search
-            for department in departments: # Status: Verified
-                dept_name = department.find(
-                    'span',
-                    id=re.compile('DERIVED_SSS_BCC_GROUP_BOX_1\$147\$\$span\$')
-                    ).text.strip()
+                        name_index = dept_name.find('-')
+                        dept_code = dept_name[:name_index].strip()
 
-                name_index = dept_name.find('-')
-                dept_code = dept_name[:name_index].strip()
+                        print('Department: {name}'.format(name=dept_name))
+                        print('==============================================')
 
-                print('Department: {name}'.format(name=dept_name))
-                print('==============================================')
+                        courses = Courses._get_courses(department)
 
-                courses = Courses._get_courses(department)
+                        # For each course under a certain department
+                        for course in courses: # Status: Verified
+                            try:
+                                course_soup_rows = course.find_all('td')
 
-                # For each course under a certain department
-                for course in courses: # Status: Verified
-                    course_soup_rows = course.find_all('td')
+                                course_number = course_soup_rows[1].find('a')['id']
+                                course_code = course_soup_rows[1].find('a').text.strip()
+                                course_name = course_soup_rows[2].find('a').text.strip()
 
-                    course_number = course_soup_rows[1].find('a')['id']
-                    course_code = course_soup_rows[1].find('a').text.strip()
-                    course_name = course_soup_rows[2].find('a').text.strip()
-                    ic_action = {'ICAction': course_number}
+                                print('({num}) {dept} {code}: {name}'.format(
+                                    num=course_number,
+                                    dept=dept_code,
+                                    code=course_code,
+                                    name=course_name,
+                                    ))
 
-                    print('({num}) {dept} {code}: {name}'.format(
-                        num=course_number,
-                        dept=dept_code,
-                        code=course_code,
-                        name=course_name,
-                        ))
+                                if 'unspecified' in course_name.lower():
+                                    print('Skipping unspecified course')
+                                    continue
 
-                    # TODO: Should be POST (it isn't)
-                    # Note: Selecting course only takes one parameter, which
-                    # is the ICAction
-                    base_info = {
-                        'dept_code': dept_code,
-                        'course_code': course_code,
-                        'course_name': course_name,
-                        }
+                                # TODO: Should be POST (it isn't)
+                                # Note: Selecting course only takes one parameter, which
+                                # is the ICAction
+                                ic_action = {'ICAction': course_number}
+                                soup = Courses._request_page(ic_action, cookies)
 
-                    course_info = Courses._parse_course_data(
-                        ic_action,
-                        cookies,
-                        base_info,
-                        )
+                                # Some courses have multiple offerings of the same course
+                                # E.g: MATH121 offered on campus and online. Check if
+                                # table representing academic levels exists
+                                # Status: Verified
+                                if Courses._has_multiple_course_offerings(soup):
+                                    print('** THIS HAS MULITPLE COURSE OFFERINGS **')
 
-                print('\n')
+                                    academic_levels = Courses._get_academic_levels(soup)
+
+                                    for career_number in academic_levels:
+                                        try:
+                                            ic_action = {'ICAction': career_number}
+                                            soup = Courses._request_page(ic_action, cookies)
+                                            course_info = Courses._parse_course_data(soup)
+
+                                            print('Returning to career selection...')
+
+                                            # go back to academic level choices page
+                                            ic_action = {'ICAction': 'DERIVED_SAA_CRS_RETURN_PB$163$'}
+                                            Courses._request_page(ic_action, cookies)
+
+                                            Scraper.save_data(course_info, 'courses')
+
+                                        except Exception as ex:
+                                            Scraper.handle_error(ex, 'scrape')
+
+                                     # go back to course listing
+                                    print('Done careers. Returning to course list')
+                                    ic_action = {'ICAction': 'DERIVED_SSS_SEL_RETURN_PB$181$'}
+                                    Courses._request_page(ic_action, cookies)
+                                else:
+                                    course_info = Courses._parse_course_data(soup)
+                                    Scraper.save_data(course_info, 'courses')
+
+                                     # go back to course listing
+                                    print('Done single course. Returning to course list')
+                                    ic_action = {'ICAction': 'DERIVED_SAA_CRS_RETURN_PB$163$'}
+                                    Courses._request_page(ic_action, cookies)
+
+
+                            except Exception as ex:
+                                Scraper.handle_error(ex, 'scrape')
+
+                        print('\nDone departments')
+                        break # temporary
+
+                    except Exception as ex:
+                        Scraper.handle_error(ex, 'scrape')
+
+                break # temporary
+
+            except Exception as ex:
+                Scraper.handle_error(ex, 'scrape')
+
+            break
 
         print('\nShallow course scrape complete')
 
 
     @staticmethod
-    def login():
+    def _login():
         '''
         Emulate a SOLUS login via a Selenium webdriver. Mainly used for user
         authentication. Returns session cookies, which are retrieved and used
@@ -180,6 +225,14 @@ class Courses:
 
         return session_cookies
 
+
+    @staticmethod
+    def _request_page(params, cookies):
+        return Scraper.http_request(
+            Courses.host,
+            params=params,
+            cookies=cookies
+            )
 
     @staticmethod
     def _get_hidden_params(soup):
@@ -236,12 +289,7 @@ class Courses:
             payload.update(ic_action)
 
             # TODO: Should be POST (it isn't)
-            soup = Scraper.http_request(
-                Courses.host,
-                params=payload,
-                cookies=cookies,
-                )
-
+            soup = Courses._request_page(payload, cookies)
             Scraper.wait()
 
             return soup
@@ -258,11 +306,7 @@ class Courses:
             'table', id=re.compile('ACE_DERIVED_SSS_BCC_GROUP_BOX_1')
             )
 
-        checkboxes = soup.find_all(
-            'input', id=re.compile('CRSE_SEL_CHECKBOX\$chk\$')
-            )
-
-        return departments, checkboxes
+        return departments
 
     # Status: Verified
     @staticmethod
@@ -270,11 +314,24 @@ class Courses:
         return department_soup.find_all('tr', id=re.compile('trCOURSE_LIST'))
 
 
+    @staticmethod
+    def _has_multiple_course_offerings(soup):
+        return soup.find('table', id='CRSE_OFFERINGS$scroll$0')
+
+
+    @staticmethod
+    def _get_academic_levels(soup):
+        return [
+            a['id'] for a in soup.find_all('a', id=re.compile('CAREER\$'))
+            ]
+
     # Status: Verified
     @staticmethod
-    def _parse_course_data(ic_action, cookies, base_info):
+    def _parse_course_data(soup):
 
         # All HTML id's used via regular expressions
+        REGEX_TITLE = re.compile('DERIVED_CRSECAT_DESCR200')
+        REGEX_CAMPUS = re.compile('CAMPUS_TBL_DESCR')
         REGEX_DESC = re.compile('SSR_CRSE_OFF_VW_DESCRLONG')
         REGEX_UNITS = re.compile('DERIVED_CRSECAT_UNITS_RANGE')
         REGEX_BASIS = re.compile('SSR_CRSE_OFF_VW_GRADING_BASIS')
@@ -283,8 +340,38 @@ class Courses:
         REGEX_AC_ORG = re.compile('ACAD_ORG_TBL_DESCR')
         REGEX_CRSE_CMPS  = re.compile('ACE_SSR_DUMMY_RECVW')
         REGEX_ENROLL_TBL = re.compile('ACE_DERIVED_CRSECAT_SSR_GROUP2')
-        REGEX_ENROLL_DIV = re.compile('win0divSSR_CRSE_OFF_VW')
+        REGEX_ENROLL_DIV = re.compile('win0div')
         REGEX_CEAB = re.compile('ACE_DERIVED_CLSRCH')
+
+
+        def filter_course_name(soup):
+            course_title = soup.find('span', id=REGEX_TITLE).text.strip()
+            name_index = course_title.find('-')
+
+            dept_raw, course_code_raw = course_title[:name_index - 1].split(' ')
+            course_name = course_title[name_index + 1:].strip()
+
+            dept = dept_raw.encode('ascii', 'ignore').decode().strip()
+            course_code = course_code_raw.encode('ascii', 'ignore').decode().strip()
+
+            return dept, course_code, course_name
+
+
+        def filter_description(soup):
+            # TODO: Figure out way to filter for  'NOTE', 'LEARNING HOURS', etc
+            # text sections from description
+            descr_raw = soup.find('span', id=REGEX_DESC)
+
+            if not descr_raw:
+                return ''
+
+            # If <br/> tags exist, there will be additional information other
+            # than the description. Filter for description only.
+            if descr_raw.find_all('br'):
+                return descr_raw.find_all('br')[0].previous_sibling
+
+            return descr_raw.text.encode('ascii', 'ignore').decode().strip()
+
 
         def create_dict(rows, tag, tag_id=None, start=0, enroll=False):
             ENROLLMENT_INFO_MAP = {
@@ -298,10 +385,12 @@ class Courses:
             for row in rows:
                 name_raw, desc_raw = row.find_all(tag, id=tag_id)[start:]
                 name = name_raw.text.strip()
-                desc = desc_raw.text.strip()
+                desc = desc_raw.text.encode('ascii', 'ignore').decode().strip()
 
                 if enroll:
                     name = ENROLLMENT_INFO_MAP[name]
+                else:
+                    name = name.lower().replace(' / ', '_')
 
                 data.update({name: desc})
 
@@ -335,37 +424,47 @@ class Courses:
             return ceab_data
 
 
-        soup = Scraper.http_request(
-            Courses.host,
-            params=ic_action,
-            cookies=cookies
-            )
+        department, course_code, course_name = filter_course_name(soup)
 
-        description = soup.find('span', id=REGEX_DESC).text.strip()
+        # === Course Detail information ===
+        academic_level = soup.find('span', id=REGEX_AC_LVL).text.strip()
         units = float(soup.find('span', id=REGEX_UNITS).text.strip())
         grading_basis = soup.find('span', id=REGEX_BASIS).text.strip()
-        academic_level = soup.find('span', id=REGEX_AC_LVL).text.strip()
+        campus = soup.find('span', id=REGEX_CAMPUS).text.strip()
         academic_group = soup.find('span', id=REGEX_AC_GRP).text.strip()
         academic_org = soup.find('span', id=REGEX_AC_ORG).text.strip()
-        course_components_rows = soup.find('table', id=REGEX_CRSE_CMPS).find_all('tr')[1:]
-        enrollment_info_rows =  soup.find('table', id=REGEX_ENROLL_TBL).find_all('tr')[1:]
 
-        # the following are dictionaries of data
+        # course_components is a dict of data
+        course_components_rows = soup.find('table', id=REGEX_CRSE_CMPS).find_all('tr')[1:]
         course_components = create_dict(course_components_rows, 'td', start=1)
+
+        # Note: The following fields potentially could be missing data
+
+        # === Enrollment information ===
+        enrollment_table =  soup.find('table', id=REGEX_ENROLL_TBL)
+        enrollment_info_rows = enrollment_table.find_all('tr')[1:] if enrollment_table else []
+
+        # Will not exist for 2nd half of full-year courses, like MATH 121B
         enroll_info = create_dict(enrollment_info_rows, 'div', tag_id=REGEX_ENROLL_DIV, enroll=True)
+
+        # === Description Informaiton ===
+        description = filter_description(soup)
+
+        # === CEAB Units ===
         ceab_data = create_ceab_dict(soup)
 
         data = {
             # NOTE: course_id not shown on generic course page. Must do deep
             # scrape of course sections for course_id
             'course_id': None,
-            'department': base_info['dept_code'],
-            'course_code': base_info['course_code'],
-            'course_name': base_info['course_name'],
+            'department': department,
+            'course_code': course_code,
+            'course_name': course_name,
+            'campus': campus,
             'description': description,
             'grading_basis': grading_basis,
             'course_components': course_components,
-            'requirements': enroll_info.get('stub', ''),
+            'requirements': enroll_info.get('requirements', ''),
             'add_consent': enroll_info.get('add_consent', ''),
             'drop_consent': enroll_info.get('drop_consent', ''),
             'academic_level': academic_level,
