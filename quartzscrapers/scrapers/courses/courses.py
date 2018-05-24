@@ -17,7 +17,7 @@ class Courses:
     A scraper for Queen's courses.
     '''
 
-    host = 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/SA/c/SA_LEARNER_SERVICES.SSS_BROWSE_CATLG_P.GBL' # new
+    host = 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/SA/c/SA_LEARNER_SERVICES.SSS_BROWSE_CATLG_P.GBL'
     LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
     headers = {
@@ -27,7 +27,7 @@ class Courses:
         'Upgrade-Insecure-Requests': '1',
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Referer': 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/SA/c/SA_LEARNER_SERVICES.CLASS_SEARCH.GBL?Page=SSR_CLSRCH_ENTRY&Action=U', #new
+        'Referer': 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/SA/c/SA_LEARNER_SERVICES.CLASS_SEARCH.GBL?Page=SSR_CLSRCH_ENTRY&Action=U',
         'Connection': 'keep-alive',
         'Cache-Control': 'no-cache',
         }
@@ -169,7 +169,7 @@ class Courses:
             except Exception as ex:
                 Scraper.handle_error(ex, 'scrape')
 
-            break
+            break # temporary
 
         print('\nShallow course scrape complete')
 
@@ -191,11 +191,9 @@ class Courses:
         chrome_options.add_argument('--headless')
         # socket.setdefaulttimeout(60) # timeout for current socket in use
 
-        # TODO: Change timeout back to default
-
         driver = webdriver.Chrome()
-        driver.set_page_load_timeout(30000)
-        driver.implicitly_wait(30000) # timeout to for an element to be found
+        driver.set_page_load_timeout(30000) # temporary
+        driver.implicitly_wait(30000) # temporary, timeout to for an element to be found
         driver.get('https://my.queensu.ca')
 
         username_field = driver.find_element_by_id('username')
