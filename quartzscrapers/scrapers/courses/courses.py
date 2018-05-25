@@ -142,6 +142,7 @@ class Courses:
                                 # TODO: Should be POST (it isn't)
                                 # Note: Selecting course only takes one parameter, which
                                 # is the ICAction
+                                # Status: Verified
                                 ic_action = {'ICAction': course_number}
                                 soup = Courses._request_page(ic_action, cookies)
 
@@ -154,8 +155,11 @@ class Courses:
 
                                     academic_levels = Courses._get_academic_levels(soup)
 
-                                    for career_number in academic_levels[1:]:
+                                    # Status: Verified
+                                    for career_number in academic_levels:
                                         #  TODO: Generalize log here into function
+
+                                        print('Getting career number: {}'.format(career_number))
 
                                         try:
                                             # go to a certain academic level to
@@ -168,7 +172,10 @@ class Courses:
                                             Scraper.save_data(course_info, 'courses')
 
                                             # check if section info exists
+                                            # Status: Verified
                                             if Courses._has_course_sections(soup):
+                                                print('Career number {} has course sections. Parsing...'.format(career_number))
+
                                                 # go to sections page
                                                 ic_action = {'ICAction': 'DERIVED_SAA_CRS_SSR_PB_GO'}
                                                 soup = Courses._request_page(ic_action, cookies)
@@ -176,29 +183,43 @@ class Courses:
                                                 # TODO: Verify if accurate parse
                                                 terms = soup.find('select', id='DERIVED_SAA_CRS_TERM_ALT').find_all('option')
 
+                                                print('{} terms available.\n'.format(len(terms)))
+
+                                                # Status: Verified
                                                 for term in terms:
+                                                    print('Term: {}'.format(term.text.strip()))
+
                                                     ic_action = {'ICAction': 'DERIVED_SAA_CRS_SSR_PB_GO$3$'}
                                                     Courses._request_page(ic_action, cookies)
 
+                                                    print("Requesting 'View All' for current section...")
                                                     # view all sections
                                                     ic_action = {'ICAction': 'CLASS_TBL_VW5$hviewall$0'}
                                                     soup = Courses._request_page(ic_action, cookies)
 
                                                     sections = Courses._get_sections(soup)
 
-                                                    for section in sections:
+                                                    print("'View All' request complete. Total sections: {}\n".format(len(sections)))
+
+                                                    # Status: Verified
+                                                    for section in sections[0:3]:
+                                                        print('Section number: {}'.format(section))
+
                                                         # go to sections page
                                                         ic_action = {'ICAction': section}
                                                         soup = Courses._request_page(ic_action, cookies)
 
                                                         course_section_info = Courses._parse_course_section_data(soup)
-                                                        Scraper.save_data(course_info, 'courses_sections')
+                                                        # Scraper.save_data(course_info, 'courses_sections')
+                                                        print('Fake data saved')
 
                                                         # go back to sections
                                                         ic_action = {'ICAction': 'CLASS_SRCH_WRK2_SSR_PB_CLOSE'}
                                                         Courses._request_page(ic_action, cookies)
 
-                                            print('Returning to career selection...')
+                                                    print('\nDone term: {}'.format(term.text.strip()))
+
+                                            print('Done career {}. Returning to career selection...'.format(career_number))
 
                                             # go back to academic level choices page
                                             ic_action = {'ICAction': 'DERIVED_SAA_CRS_RETURN_PB$163$'}
@@ -211,13 +232,19 @@ class Courses:
                                     print('Done careers. Returning to course list')
                                     ic_action = {'ICAction': 'DERIVED_SSS_SEL_RETURN_PB$181$'}
                                     Courses._request_page(ic_action, cookies)
+
+                                # Status: Verified
                                 else:
+                                    print('Only one course offering here. Parsig course data')
+
                                     # parse course info
                                     course_info = Courses._parse_course_data(soup)
                                     Scraper.save_data(course_info, 'courses')
 
                                     # parse section info, if it exists
                                     if Courses._has_course_sections(soup):
+                                        print('Course has course sections. Parsing...')
+
                                         course_section_info = Courses._parse_course_section_data(soup)
                                         Scraper.save_data(course_info, 'courses_sections')
 
@@ -384,26 +411,27 @@ class Courses:
         return department_soup.find_all('tr', id=re.compile('trCOURSE_LIST'))
 
 
-    @staticmethod
-    def _get_course_soups():
-        # Note: Selecting course only takes one parameter; the ICAction
-        ic_action = {'ICAction': course_number}
-        soup = Courses._request_page(ic_action, cookies)
+    # @staticmethod
+    # def _get_course_soups():
+    #     # Note: Selecting course only takes one parameter; the ICAction
+    #     ic_action = {'ICAction': course_number}
+    #     soup = Courses._request_page(ic_action, cookies)
 
-        # Some courses have multiple offerings of the same course
-        # E.g: MATH121 offered on campus and online. Check if
-        # table representing academic levels exists
-        # Status: Verified
-        if soup.find('table', id='CRSE_OFFERINGS$scroll$0'):
-            print('** THIS HAS MULITPLE COURSE OFFERINGS **')
+    #     # Some courses have multiple offerings of the same course
+    #     # E.g: MATH121 offered on campus and online. Check if
+    #     # table representing academic levels exists
+    #     # Status: Verified
+    #     if soup.find('table', id='CRSE_OFFERINGS$scroll$0'):
+    #         print('** THIS HAS MULITPLE COURSE OFFERINGS **')
 
-            academic_levels = [
-                a['id'] for a in soup.find_all('a', id=re.compile('CAREER\$'))
-                ]
+    #         academic_levels = [
+    #             a['id'] for a in soup.find_all('a', id=re.compile('CAREER\$'))
+    #             ]
 
-            for career_number in academic_levels[1:]:
-                pass
-        else:
+    #         for career_number in academic_levels[1:]:
+    #             pass
+    #     else:
+    #         pass
 
 
 
@@ -591,4 +619,6 @@ class Courses:
 
     @staticmethod
     def _parse_course_section_data(soup):
+        # import pdb; pdb.set_trace()
+        print('* no-op course section scrape!')
         pass
