@@ -90,7 +90,7 @@ class Courses:
                         courses = Courses._get_courses(department)
 
                         # For each course under a certain department
-                        for course in courses: # Status: Verified
+                        for course in courses[14:]: # Status: Verified
                             try:
                                 course_soup_rows = course.find_all('td')
 
@@ -109,6 +109,36 @@ class Courses:
                                     print('Skipping unspecified course')
                                     continue
 
+                                # TODO: Generalize into smaller function(s)
+
+                                # ================= TODO start ================
+                                # course_details = Courses._get_course_soups()
+
+                                # for course_detail in course_details:
+
+                                #     # basic course information
+                                #     course_data = Courses._parse_course_data(course_detail)
+                                #     Scraper.save_data(course_basic_data, 'courses')
+
+                                #     #TODO: finish this
+                                #     # course section information
+                                #     Courses._crawl_and_parse_course_sections()
+
+                                # # ignore
+                                # for course_basic_soup in course_basic_soups:
+                                #     course_basic_data = Courses._parse_course_data(course_basic_soup)
+                                #     Scraper.save_data(course_basic_data, 'courses')
+
+                                # # ignore
+                                # for course_section_soup in course_section_soups:
+                                #     course_section_data = Courses._parse_course_section_data(course_section_soup)
+                                #     Scraper.save_data(course_section_data, 'courses_sections')
+
+
+                                # will encapsulate this onwards
+                                #-------------------------------
+                                # ================= TODO end ==================
+
                                 # TODO: Should be POST (it isn't)
                                 # Note: Selecting course only takes one parameter, which
                                 # is the ICAction
@@ -124,19 +154,55 @@ class Courses:
 
                                     academic_levels = Courses._get_academic_levels(soup)
 
-                                    for career_number in academic_levels:
+                                    for career_number in academic_levels[1:]:
+                                        #  TODO: Generalize log here into function
+
                                         try:
+                                            # go to a certain academic level to
+                                            # basic course page
                                             ic_action = {'ICAction': career_number}
                                             soup = Courses._request_page(ic_action, cookies)
+
+                                            # parse course info
                                             course_info = Courses._parse_course_data(soup)
+                                            Scraper.save_data(course_info, 'courses')
+
+                                            # check if section info exists
+                                            if Courses._has_course_sections(soup):
+                                                # go to sections page
+                                                ic_action = {'ICAction': 'DERIVED_SAA_CRS_SSR_PB_GO'}
+                                                soup = Courses._request_page(ic_action, cookies)
+
+                                                # TODO: Verify if accurate parse
+                                                terms = soup.find('select', id='DERIVED_SAA_CRS_TERM_ALT').find_all('option')
+
+                                                for term in terms:
+                                                    ic_action = {'ICAction': 'DERIVED_SAA_CRS_SSR_PB_GO$3$'}
+                                                    Courses._request_page(ic_action, cookies)
+
+                                                    # view all sections
+                                                    ic_action = {'ICAction': 'CLASS_TBL_VW5$hviewall$0'}
+                                                    soup = Courses._request_page(ic_action, cookies)
+
+                                                    sections = Courses._get_sections(soup)
+
+                                                    for section in sections:
+                                                        # go to sections page
+                                                        ic_action = {'ICAction': section}
+                                                        soup = Courses._request_page(ic_action, cookies)
+
+                                                        course_section_info = Courses._parse_course_section_data(soup)
+                                                        Scraper.save_data(course_info, 'courses_sections')
+
+                                                        # go back to sections
+                                                        ic_action = {'ICAction': 'CLASS_SRCH_WRK2_SSR_PB_CLOSE'}
+                                                        Courses._request_page(ic_action, cookies)
 
                                             print('Returning to career selection...')
 
                                             # go back to academic level choices page
                                             ic_action = {'ICAction': 'DERIVED_SAA_CRS_RETURN_PB$163$'}
                                             Courses._request_page(ic_action, cookies)
-
-                                            Scraper.save_data(course_info, 'courses')
 
                                         except Exception as ex:
                                             Scraper.handle_error(ex, 'scrape')
@@ -146,8 +212,14 @@ class Courses:
                                     ic_action = {'ICAction': 'DERIVED_SSS_SEL_RETURN_PB$181$'}
                                     Courses._request_page(ic_action, cookies)
                                 else:
+                                    # parse course info
                                     course_info = Courses._parse_course_data(soup)
                                     Scraper.save_data(course_info, 'courses')
+
+                                    # parse section info, if it exists
+                                    if Courses._has_course_sections(soup):
+                                        course_section_info = Courses._parse_course_section_data(soup)
+                                        Scraper.save_data(course_info, 'courses_sections')
 
                                      # go back to course listing
                                     print('Done single course. Returning to course list')
@@ -313,8 +385,49 @@ class Courses:
 
 
     @staticmethod
+    def _get_course_soups():
+        # Note: Selecting course only takes one parameter; the ICAction
+        ic_action = {'ICAction': course_number}
+        soup = Courses._request_page(ic_action, cookies)
+
+        # Some courses have multiple offerings of the same course
+        # E.g: MATH121 offered on campus and online. Check if
+        # table representing academic levels exists
+        # Status: Verified
+        if soup.find('table', id='CRSE_OFFERINGS$scroll$0'):
+            print('** THIS HAS MULITPLE COURSE OFFERINGS **')
+
+            academic_levels = [
+                a['id'] for a in soup.find_all('a', id=re.compile('CAREER\$'))
+                ]
+
+            for career_number in academic_levels[1:]:
+                pass
+        else:
+
+
+
+    @staticmethod
+    def _crawl_and_parse_course_sections():
+        pass
+
+
+    @staticmethod
+    def _get_sections(soup):
+        return [
+            sec['id'] for sec in soup.find_all(
+                'a', id=re.compile('CLASS_SECTION\$')
+            )]
+
+
+    @staticmethod
     def _has_multiple_course_offerings(soup):
         return soup.find('table', id='CRSE_OFFERINGS$scroll$0')
+
+
+    @staticmethod
+    def _has_course_sections(soup):
+        return soup.find('input', id='DERIVED_SAA_CRS_SSR_PB_GO')
 
 
     @staticmethod
@@ -475,3 +588,7 @@ class Courses:
         # retain key-value order of dictionary
         return OrderedDict(data)
 
+
+    @staticmethod
+    def _parse_course_section_data(soup):
+        pass
