@@ -160,7 +160,7 @@ class Courses:
                                     academic_levels = Courses._get_academic_levels(soup)
 
                                     # Status: Verified
-                                    for career_number in academic_levels[1:]:
+                                    for career_number in academic_levels:
                                         #  TODO: Generalize log here into function
 
                                         print('Getting career number: {}'.format(career_number))
@@ -198,8 +198,6 @@ class Courses:
                                                         'ICAction': 'DERIVED_SAA_CRS_SSR_PB_GO$3$',
                                                         'DERIVED_SAA_CRS_TERM_ALT': term_number,
                                                         }
-
-                                                    import pdb; pdb.set_trace()
 
                                                     soup = Courses._request_page(payload, cookies)
 
@@ -434,6 +432,7 @@ class Courses:
         return department_soup.find_all('tr', id=re.compile('trCOURSE_LIST'))
 
 
+    # Not yet in use
     @staticmethod
     def _get_course_soups():
         # Note: Selecting course only takes one parameter; the ICAction
@@ -457,6 +456,7 @@ class Courses:
             pass
 
 
+    # Not yet in use
     @staticmethod
     def _crawl_and_parse_course_sections():
         pass
@@ -482,7 +482,12 @@ class Courses:
 
     @staticmethod
     def _view_sections_closed(soup):
-        return 'View All' in soup.find('a', id='CLASS_TBL_VW5$hviewall$0')
+        # return 'View All' in soup.find('a', id='CLASS_TBL_VW5$hviewall$0')
+
+        view_all_tab = soup.find('a', id='CLASS_TBL_VW5$hviewall$0')
+
+        # return 'View All' in soup.find('div', id='win0divCLASS_TBL_VW5GP$0')
+        return view_all_tab and 'View All' in view_all_tab
 
 
     @staticmethod
@@ -674,8 +679,6 @@ class Courses:
 
         # ISO 8601 date format
         course_start_date, course_end_date = [pendulum.parse(date, strict=False).isoformat().split('T')[0] for date in soup.find('span', id='SSR_CLS_DTL_WRK_SSR_DATE_LONG').text.strip().split(' - ')]
-
-        import pdb; pdb.set_trace()
 
         # ======================== Meeting Information ========================
         course_dates = []
