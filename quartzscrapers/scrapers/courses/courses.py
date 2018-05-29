@@ -1,6 +1,9 @@
 import re
 import socket
+import pendulum
 import chromedriver_binary # Adds chromedriver_binary to path
+
+from pymongo import MongoClient
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -131,7 +134,8 @@ class Courses:
 
                                 # # ignore
                                 # for course_section_soup in course_section_soups:
-                                #     course_section_data = Courses._parse_course_section_data(course_section_soup)
+                                #     section_name = None # parse section name, such as 002-LEC
+                                #     course_section_data = Courses._parse_course_section_data(course_section_soup, course_data, section_name)
                                 #     Scraper.save_data(course_section_data, 'courses_sections')
 
 
@@ -156,7 +160,7 @@ class Courses:
                                     academic_levels = Courses._get_academic_levels(soup)
 
                                     # Status: Verified
-                                    for career_number in academic_levels:
+                                    for career_number in academic_levels[1:]:
                                         #  TODO: Generalize log here into function
 
                                         print('Getting career number: {}'.format(career_number))
@@ -168,8 +172,8 @@ class Courses:
                                             soup = Courses._request_page(ic_action, cookies)
 
                                             # parse course info
-                                            course_info = Courses._parse_course_data(soup)
-                                            Scraper.save_data(course_info, 'courses')
+                                            course_data = Courses._parse_course_data(soup)
+                                            Scraper.save_data(course_data, 'courses')
 
                                             # check if section info exists
                                             # Status: Verified
@@ -187,33 +191,48 @@ class Courses:
 
                                                 # Status: Verified
                                                 for term in terms:
-                                                    print('Term: {}'.format(term.text.strip()))
+                                                    term_number = int(term['value'])
+                                                    print('Term: {} ({})'.format(term.text.strip(), term_number))
 
-                                                    ic_action = {'ICAction': 'DERIVED_SAA_CRS_SSR_PB_GO$3$'}
-                                                    Courses._request_page(ic_action, cookies)
+                                                    payload = {
+                                                        'ICAction': 'DERIVED_SAA_CRS_SSR_PB_GO$3$',
+                                                        'DERIVED_SAA_CRS_TERM_ALT': term_number,
+                                                        }
 
-                                                    print("Requesting 'View All' for current section...")
+                                                    import pdb; pdb.set_trace()
+
+                                                    soup = Courses._request_page(payload, cookies)
+
                                                     # view all sections
-                                                    ic_action = {'ICAction': 'CLASS_TBL_VW5$hviewall$0'}
-                                                    soup = Courses._request_page(ic_action, cookies)
+                                                    # NOTE: PeopleSoft maintains state of 'View All' for sections
+                                                    # per every other new section you select. This means it
+                                                    # only needs to be expanded ONCE.
+                                                    if Courses._view_sections_closed(soup):
+                                                        print("'View All' tab is minimized. Requesting 'View All' for current term...")
+                                                        payload.update({'ICAction': 'CLASS_TBL_VW5$hviewall$0'})
+                                                        soup = Courses._request_page(payload, cookies)
 
                                                     sections = Courses._get_sections(soup)
 
                                                     print("'View All' request complete. Total sections: {}\n".format(len(sections)))
 
                                                     # Status: Verified
-                                                    for section in sections[0:3]:
+                                                    for section in sections[:3]:
                                                         print('Section number: {}'.format(section))
 
-                                                        # go to sections page
-                                                        ic_action = {'ICAction': section}
-                                                        soup = Courses._request_page(ic_action, cookies)
+                                                        # go to sections page.
+                                                        payload.update({'ICAction': section})
 
-                                                        course_section_info = Courses._parse_course_section_data(soup)
-                                                        # Scraper.save_data(course_info, 'courses_sections')
-                                                        print('Fake data saved')
+                                                        section_name = soup.find('a', id=section).text.strip().split(' ')[0] # parse section name, such as 002-LEC
 
-                                                        # go back to sections
+                                                        # TODO: Fix bug. After first section scrape, and request to prev page and following request to section 2, requested page
+                                                        # is not compatible with what we expect. Might be a param-state error on SOLUS
+                                                        section_soup = Courses._request_page(payload, cookies)
+                                                        course_section_base_data, course_section_data = Courses._parse_course_section_data(section_soup, course_data, section_name)
+
+                                                        Courses._preprocess_and_save_course(course_section_base_data, course_section_data)
+
+                                                        # go back to sections. No need to persist additional payload params
                                                         ic_action = {'ICAction': 'CLASS_SRCH_WRK2_SSR_PB_CLOSE'}
                                                         Courses._request_page(ic_action, cookies)
 
@@ -233,20 +252,21 @@ class Courses:
                                     ic_action = {'ICAction': 'DERIVED_SSS_SEL_RETURN_PB$181$'}
                                     Courses._request_page(ic_action, cookies)
 
-                                # Status: Verified
+                                # Status: Refactor pending. Ignore for now
                                 else:
                                     print('Only one course offering here. Parsig course data')
 
                                     # parse course info
-                                    course_info = Courses._parse_course_data(soup)
-                                    Scraper.save_data(course_info, 'courses')
+                                    course_data = Courses._parse_course_data(soup)
+                                    Scraper.save_data(course_data, 'courses')
 
                                     # parse section info, if it exists
                                     if Courses._has_course_sections(soup):
                                         print('Course has course sections. Parsing...')
 
-                                        course_section_info = Courses._parse_course_section_data(soup)
-                                        Scraper.save_data(course_info, 'courses_sections')
+                                        section_name = soup.find('a', id=section).text.strip().split(' ')[0] # parse section name, such as 002-LEC
+                                        course_section_data = Courses._parse_course_section_data(soup, course_data, section_name)
+                                        # Courses._preprocess_and_save_course(course_course_data, course_section_data)
 
                                      # go back to course listing
                                     print('Done single course. Returning to course list')
@@ -331,6 +351,7 @@ class Courses:
             cookies=cookies
             )
 
+
     @staticmethod
     def _get_hidden_params(soup):
         '''
@@ -369,6 +390,7 @@ class Courses:
 
         return params
 
+
     # Currently not in use
     @staticmethod
     def _remove_params(params, params_keys):
@@ -405,34 +427,34 @@ class Courses:
 
         return departments
 
+
     # Status: Verified
     @staticmethod
     def _get_courses(department_soup):
         return department_soup.find_all('tr', id=re.compile('trCOURSE_LIST'))
 
 
-    # @staticmethod
-    # def _get_course_soups():
-    #     # Note: Selecting course only takes one parameter; the ICAction
-    #     ic_action = {'ICAction': course_number}
-    #     soup = Courses._request_page(ic_action, cookies)
+    @staticmethod
+    def _get_course_soups():
+        # Note: Selecting course only takes one parameter; the ICAction
+        ic_action = {'ICAction': course_number}
+        soup = Courses._request_page(ic_action, cookies)
 
-    #     # Some courses have multiple offerings of the same course
-    #     # E.g: MATH121 offered on campus and online. Check if
-    #     # table representing academic levels exists
-    #     # Status: Verified
-    #     if soup.find('table', id='CRSE_OFFERINGS$scroll$0'):
-    #         print('** THIS HAS MULITPLE COURSE OFFERINGS **')
+        # Some courses have multiple offerings of the same course
+        # E.g: MATH121 offered on campus and online. Check if
+        # table representing academic levels exists
+        # Status: Verified
+        if soup.find('table', id='CRSE_OFFERINGS$scroll$0'):
+            print('** THIS HAS MULITPLE COURSE OFFERINGS **')
 
-    #         academic_levels = [
-    #             a['id'] for a in soup.find_all('a', id=re.compile('CAREER\$'))
-    #             ]
+            academic_levels = [
+                a['id'] for a in soup.find_all('a', id=re.compile('CAREER\$'))
+                ]
 
-    #         for career_number in academic_levels[1:]:
-    #             pass
-    #     else:
-    #         pass
-
+            for career_number in academic_levels[1:]:
+                pass
+        else:
+            pass
 
 
     @staticmethod
@@ -459,10 +481,16 @@ class Courses:
 
 
     @staticmethod
+    def _view_sections_closed(soup):
+        return 'View All' in soup.find('a', id='CLASS_TBL_VW5$hviewall$0')
+
+
+    @staticmethod
     def _get_academic_levels(soup):
         return [
             a['id'] for a in soup.find_all('a', id=re.compile('CAREER\$'))
             ]
+
 
     # Status: Verified
     @staticmethod
@@ -618,7 +646,162 @@ class Courses:
 
 
     @staticmethod
-    def _parse_course_section_data(soup):
-        # import pdb; pdb.set_trace()
-        print('* no-op course section scrape!')
-        pass
+    def _parse_course_section_data(soup, basic_data, section_name):
+        print('Starting deep course scrape')
+
+        DAY_MAP = {
+            'Mo': 'Monday',
+            'Tu': 'Tuesday',
+            'We': 'Wednesday',
+            'Th': 'Thursday',
+            'Fr': 'Friday',
+            'Sa': 'Saturday',
+            'Su': 'Sunday',
+            }
+
+
+        # =========================== Class Details ===========================
+        section_name = section_name
+        _, year_term, section_type = soup.find('span', id='DERIVED_CLSRCH_SSS_PAGE_KEYDESCR').text.strip().split(' | ')
+        year, term = year_term.split(' ')
+        section_number = soup.find('span', id='DERIVED_CLSRCH_DESCR200').text.strip().split(' - ')[1][:3]
+        class_number = int(soup.find('span', id='SSR_CLS_DTL_WRK_CLASS_NBR').text.strip())
+        course_id = int(soup.find('span', id='SSR_CLS_DTL_WRK_CRSE_ID').text.strip())
+
+        # Note: There are start/end dates for the COURSE, and start/end dates
+        # for a section. These two start/end date variables are for the course
+        # (may not be necessary)
+
+        # ISO 8601 date format
+        course_start_date, course_end_date = [pendulum.parse(date, strict=False).isoformat().split('T')[0] for date in soup.find('span', id='SSR_CLS_DTL_WRK_SSR_DATE_LONG').text.strip().split(' - ')]
+
+        import pdb; pdb.set_trace()
+
+        # ======================== Meeting Information ========================
+        course_dates = []
+
+        # see how many rows of class times there are
+        date_rows = soup.find_all('tr', id=re.compile('trSSR_CLSRCH_MTG\$[0-9]+_row'))
+
+        # Note: Some rows have dates such as "MoTu 9:30AM - 10:30AM"
+        for date_row in date_rows:
+            date_times = date_row.find('span', id='MTG_SCHED$0').text.strip().split(' ')
+
+            if 'TBA' in date_times:
+                start_time = end_time = 'TBA'
+            else:
+                start_time = pendulum.parse(date_times[1], strict=False).isoformat().split('T')[1]
+                end_time = pendulum.parse(date_times[3], strict=False).isoformat().split('T')[1]
+
+            days = []
+
+            for day_short, day_long in DAY_MAP.items():
+                if day_short in date_row.text:
+                    days.append(day_long)
+
+            location = soup.find('span', id='MTG_LOC$0').text.strip()
+
+            # TODO: Verify format for more than one instructor existing
+            if 'Staff' in soup.find('span', id='MTG_INSTR$0'):
+                instructors = ['Staff']
+            else:
+                last, first = soup.find('span', id='MTG_INSTR$0').text.strip().split(',')
+                instructors = ['{} {}'.format(first, last)]
+
+            # start/end dates for a partcular SECTION
+            meeting_dates = soup.find('span', id='MTG_DATE$0').text.strip().split(' - ')
+
+            if 'TBA' in meeting_dates:
+                start_date = end_date = 'TBA'
+            else:
+                start_date, end_date = [
+                    pendulum.parse(date, strict=False).isoformat().split('T')[0] for date in
+                        soup.find('span', id='MTG_DATE$0').text.strip().split(' - ')
+                    ]
+
+            course_date = {
+                'day': 'TBA' if 'TBA' in date_times else None,
+                'start_time': start_time,
+                'end_time': end_time,
+                'start_date': start_date,
+                'end_date': end_date,
+                'location': location,
+                'instructors': instructors,
+                }
+
+            for day in days:
+                course_date['day'] = day
+                course_dates.append(OrderedDict(course_date))
+
+        # ========================= Class Availability ========================
+        enrollment_capacity = int(soup.find('div', id='win0divSSR_CLS_DTL_WRK_ENRL_CAP').text.strip())
+        enrollment_total = int(soup.find('div', id='win0divSSR_CLS_DTL_WRK_ENRL_TOT').text.strip())
+        waitlist_capacity = int(soup.find('div', id='win0divSSR_CLS_DTL_WRK_WAIT_CAP').text.strip())
+        waitlist_total = int(soup.find('div', id='win0divSSR_CLS_DTL_WRK_WAIT_TOT').text.strip())
+
+        section_data = {
+            'section_name:': section_name,
+            'section_type:': section_type,
+            'section_number:': section_number,
+            'class_number': class_number,
+            'dates:': course_dates,
+            'combined_with:': None, # TODO
+            'enrollment_capacity:': enrollment_capacity,
+            'enrollment_total:': enrollment_total,
+            'waitlist_capacity:': waitlist_capacity,
+            'waitlist_total:': waitlist_total,
+            'last_updated:': pendulum.now().isoformat(),
+            }
+
+        course_data = {
+            'course_id': course_id,
+            'year': year,
+            'term': term,
+            'department': basic_data.get('department', ''),
+            'course_code': basic_data.get('course_code', ''),
+            'course_name': basic_data.get('course_name', ''),
+            'units': basic_data.get('units', ''),
+            'campus': basic_data.get('campus', ''),
+            'academic_level': basic_data.get('academic_level', ''),
+            }
+
+        return OrderedDict(course_data), OrderedDict(section_data)
+
+
+    @staticmethod
+    def _preprocess_and_save_course(course_data, section_data):
+        client = MongoClient('localhost', 27017)
+        db = client['knowledge']
+        collection = 'courses_sections'
+
+        # course is found. Append course section
+        # NOTE: Multiple courses with the same ID can exist. Such as MATH121 for
+        # main campus, bader campus, or online. In order for a course listing to
+        # be unique, these 5 datapoints must be unique AS A BUNDLE:
+        # - Course ID
+        # - campus
+        # - academic_level
+        # - year
+        # - term
+
+        course = db[collection].find_one({
+            'course_id': course_data.get('course_id'),
+            'campus': course_data.get('campus'),
+            'academic_level': course_data.get('academic_level'),
+            'year': course_data.get('year'),
+            'term': course_data.get('term'),
+            })
+
+        if course:
+            db[collection].find_one_and_update(
+                course,
+                {'$push': {'course_sections': section_data}}
+                )
+
+        # course does not yet exist. Add brand new document
+        else:
+            course_data['course_sections'] = [section_data]
+            db[collection].insert(course_data)
+
+        print('Course data saved\n')
+
