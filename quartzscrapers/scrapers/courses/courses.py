@@ -215,7 +215,7 @@ class Courses:
                                                     print("'View All' request complete. Total sections: {}\n".format(len(sections)))
 
                                                     # Status: Verified
-                                                    for section in sections[:3]:
+                                                    for section in sections:
                                                         print('Section number: {}'.format(section))
 
                                                         # go to sections page.
@@ -249,6 +249,9 @@ class Courses:
                                     print('Done careers. Returning to course list')
                                     ic_action = {'ICAction': 'DERIVED_SSS_SEL_RETURN_PB$181$'}
                                     Courses._request_page(ic_action, cookies)
+
+                                    print('BACK AT COURSE SELECTION CATALOGUE')
+                                    import pdb; pdb.set_trace()
 
                                 # Status: Refactor pending. Ignore for now
                                 else:
@@ -598,7 +601,7 @@ class Courses:
 
         department, course_code, course_name = filter_course_name(soup)
 
-        # === Course Detail information ===
+        # =========================== Course Detail ===========================
         academic_level = soup.find('span', id=REGEX_AC_LVL).text.strip()
         units = float(soup.find('span', id=REGEX_UNITS).text.strip())
         grading_basis = soup.find('span', id=REGEX_BASIS).text.strip()
@@ -612,17 +615,17 @@ class Courses:
 
         # Note: The following fields potentially could be missing data
 
-        # === Enrollment information ===
+        # ======================= Enrollment Information ======================
         enrollment_table =  soup.find('table', id=REGEX_ENROLL_TBL)
         enrollment_info_rows = enrollment_table.find_all('tr')[1:] if enrollment_table else []
 
         # Will not exist for 2nd half of full-year courses, like MATH 121B
         enroll_info = create_dict(enrollment_info_rows, 'div', tag_id=REGEX_ENROLL_DIV, enroll=True)
 
-        # === Description Informaiton ===
+        # ============================ Description ============================
         description = filter_description(soup)
 
-        # === CEAB Units ===
+        # ============================ CEAB Units =============================
         ceab_data = create_ceab_dict(soup)
 
         data = {
@@ -668,6 +671,7 @@ class Courses:
         # =========================== Class Details ===========================
         section_name = section_name
         _, year_term, section_type = soup.find('span', id='DERIVED_CLSRCH_SSS_PAGE_KEYDESCR').text.strip().split(' | ')
+        section_type = section_type.replace(' ', '') # trims spaces in 'Lecture / Discussion'
         year, term = year_term.split(' ')
         section_number = soup.find('span', id='DERIVED_CLSRCH_DESCR200').text.strip().split(' - ')[1][:3]
         class_number = int(soup.find('span', id='SSR_CLS_DTL_WRK_CLASS_NBR').text.strip())
@@ -742,13 +746,25 @@ class Courses:
         waitlist_capacity = int(soup.find('div', id='win0divSSR_CLS_DTL_WRK_WAIT_CAP').text.strip())
         waitlist_total = int(soup.find('div', id='win0divSSR_CLS_DTL_WRK_WAIT_TOT').text.strip())
 
+        # ========================= Combined Section ========================
+        combined_with = []
+
+        combined_rows = soup.find_all('tr', id=re.compile('trSCTN_CMBND\$0_row')) or []
+
+        for combined_row in combined_rows:
+            combined_section_number = int(combined_row.find('span', id='CLASS_NAME$0').split('(')[1][:-1])
+
+            if combined_section_number != class_number:
+                combined_with.append(combined_section_number)
+
+
         section_data = {
             'section_name:': section_name,
             'section_type:': section_type,
             'section_number:': section_number,
             'class_number': class_number,
             'dates:': course_dates,
-            'combined_with:': None, # TODO
+            'combined_with:': combined_with,
             'enrollment_capacity:': enrollment_capacity,
             'enrollment_total:': enrollment_total,
             'waitlist_capacity:': waitlist_capacity,
