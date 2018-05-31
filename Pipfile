@@ -14,5 +14,6 @@ selenium = "*"
 chromedriver-binary = "*"
 retrying = "*"
 lxml = "*"
+"flake8" = "*"
 
 [dev-packages]

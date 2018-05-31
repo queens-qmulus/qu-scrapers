@@ -85,13 +85,13 @@ class Courses:
                         name_index = dept_name.find('-')
                         dept_code = dept_name[:name_index].strip()
 
-                        print('Department: {name}'.format(name=dept_name))
+                        print('\nDepartment: {name}'.format(name=dept_name))
                         print('==============================================')
 
                         courses = department.find_all('tr', id=re.compile('trCOURSE_LIST'))
 
                         # For each course under a certain department
-                        for course in courses[27:]:
+                        for course in courses:
                             try:
                                 course_number = course.find('a', id=re.compile('CRSE_NBR\$'))['id']
                                 course_name = course.find('span', id=re.compile('CRSE_TITLE\$')).text
@@ -149,20 +149,19 @@ class Courses:
                             except Exception as ex:
                                 Scraper.handle_error(ex, 'scrape')
 
-                        print('\nDone departments')
-                        break # temporary
+                        print('\nDone department {}'.format(dept_name))
 
                     except Exception as ex:
                         Scraper.handle_error(ex, 'scrape')
 
-                break # temporary
+                print('\nDone letter {}'.format(dept_letter))
 
             except Exception as ex:
                 Scraper.handle_error(ex, 'scrape')
 
             break # temporary
 
-        print('\nShallow course scrape complete')
+        print('\nCourse scrape complete')
 
 
     @staticmethod
@@ -627,7 +626,6 @@ class Courses:
 
             if combined_section_number != class_number:
                 combined_with.append(combined_section_number)
-
 
         section_data = {
             'section_name:': section_name,

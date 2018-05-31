@@ -1,7 +1,7 @@
 from urllib.parse import urljoin
 
 from ..utils import Scraper
-from .building_helpers import get_building_coords
+from .buildings_helpers import get_building_coords
 
 
 class Buildings:
@@ -30,7 +30,7 @@ class Buildings:
                     building_data = Buildings._parse_building_data(
                         campus_relative_url,
                         building['href']
-                        )
+                    )
 
                     if building_data:
                         results.append(building_data)
@@ -40,7 +40,6 @@ class Buildings:
                     Scraper.handle_error(ex, 'scrape')
 
                 Scraper.wait()
-
 
     @staticmethod
     def _get_campuses(relative_url):
@@ -56,7 +55,6 @@ class Buildings:
         campuses = soup.find_all('p', 'overall-label')
 
         return campuses
-
 
     @staticmethod
     def _get_buildings(campus_relative_url):
@@ -80,7 +78,6 @@ class Buildings:
         buildings = campus_map.find_all('area')
 
         return buildings
-
 
     @staticmethod
     def _parse_building_data(campus_relative_url, building_param):

@@ -5,6 +5,7 @@ from urllib.parse import urljoin
 from ..utils import Scraper
 from .textbooks_helpers import get_google_books_info, normalize_string
 
+
 class Textbooks:
     '''
     A scraper for Queen's textbooks.
@@ -14,7 +15,6 @@ class Textbooks:
     '''
 
     host = 'https://www.campusbookstore.com'
-
 
     @staticmethod
     def scrape():
@@ -30,33 +30,43 @@ class Textbooks:
 
                 course_rel_urls = Textbooks._get_course_rel_urls(
                     'textbooks/search-engine/results', department
-                    )
+                )
 
                 for course_rel_url in course_rel_urls:
-                    textbook_data= []
+                    textbook_data = []
 
                     try:
                         course_page, course_url = (
                             Textbooks._get_course_page(course_rel_url)
-                            )
+                        )
 
-                        course_data = Textbooks._parse_course_data(course_page)
+                        course_data = Textbooks._parse_course_data(
+                            course_page
+                        )
 
                         print('Course: {code} ({term})'.format(
-                            code=course_data['code'], term=course_data['term'])
-                            )
+                            code=course_data['code'],
+                            term=course_data['term']
+                        ))
+
                         print('--------------------------')
                         print('Course Link: {url}\n'.format(url=course_url))
 
-                        textbooks = course_page.find_all('div', 'textbookHolder')
+                        textbooks = course_page.find_all(
+                            'div', 'textbookHolder'
+                        )
 
-                        print('{num} textbook(s) found\n'.format(num=len(textbooks)))
+                        print('{num} textbook(s) found\n'.format(
+                            num=len(textbooks)
+                        ))
 
                         for textbook in textbooks:
                             try:
-                                textbook_info = Textbooks._parse_textbook_data(
-                                    textbook, course_url
+                                textbook_info = (
+                                    Textbooks._parse_textbook_data(
+                                        textbook, course_url
                                     )
+                                )
 
                                 textbook_data.append(textbook_info)
 
@@ -68,7 +78,7 @@ class Textbooks:
                         if course_data or textbook_data:
                             Textbooks._preprocess_and_save_textbooks(
                                 course_data, textbook_data
-                                )
+                            )
 
                         Scraper.wait()
 
@@ -77,7 +87,6 @@ class Textbooks:
 
             except Exception as ex:
                 Scraper.handle_error(ex, 'scrape')
-
 
     @staticmethod
     def _get_departments(relative_url):
@@ -97,7 +106,6 @@ class Textbooks:
         departments = [dep.text.strip() for dep in departments_raw]
 
         return departments
-
 
     @staticmethod
     def _get_course_rel_urls(relative_url, department):
@@ -141,7 +149,6 @@ class Textbooks:
 
         return course_rel_urls
 
-
     @staticmethod
     def _get_course_page(course_rel_url):
         '''
@@ -155,7 +162,6 @@ class Textbooks:
         soup = Scraper.http_request(course_url)
 
         return soup, course_url
-
 
     @staticmethod
     def _parse_course_data(course_page):
@@ -172,17 +178,17 @@ class Textbooks:
         course_code, course_term = (
             course_page.find('span', id='textbookCategory').text
                        .strip().split(' ')
-            )
+        )
 
         instructors_raw = (
             [url for url in course_page.select('dd > a')
                 if re.search('people', url['href'])][0]
-            )
+        )
 
         instructors = (
             normalize_string(instructors_raw.text.strip().split(', '))
-                if instructors_raw else []
-            )
+            if instructors_raw else []
+        )
 
         # strip '(' and ')'
         term = regex.sub('', course_term)
@@ -191,10 +197,9 @@ class Textbooks:
             'code': course_code,
             'term': term,
             'instructors': instructors
-            }
+        }
 
         return course_data
-
 
     @staticmethod
     def _parse_textbook_data(textbook, course_url):
@@ -209,7 +214,7 @@ class Textbooks:
         image_ref = urljoin(
             Textbooks.host,
             textbook.find('img', {'data-id': 'toLoad'})['data-url']
-            )
+        )
         image_url = Scraper.http_request(image_ref, parse=False).text
 
         status_raw = textbook.find('dd', 'textbookStatus')
@@ -217,8 +222,8 @@ class Textbooks:
 
         isbn_13 = (
             textbook.find('dt', text=re.compile('ISBN'))
-                .next_sibling.next_sibling.text.strip()
-            )
+                    .next_sibling.next_sibling.text.strip()
+        )
 
         print('Textbook ISBN: {isbn}'.format(isbn=isbn_13))
 
@@ -243,8 +248,8 @@ class Textbooks:
         else:
             title_raw, authors_raw = (
                 textbook.select('div.textbookInfoHolder > h2')[0]
-                    .text.strip().split('by')
-                )
+                        .text.strip().split('by')
+            )
 
             title = title_raw.strip()
             authors = authors_raw.strip().replace('/', ', ').split(', ')
@@ -263,10 +268,9 @@ class Textbooks:
             'price_used': price_used,
             'link': course_url,
             'status': status
-            }
+        }
 
         return data
-
 
     @staticmethod
     def _preprocess_and_save_textbooks(course_data, textbook_data):
@@ -293,7 +297,7 @@ class Textbooks:
                 db[collection].find_one_and_update(
                     {'isbn_13': isbn_13},
                     {'$push': {'courses': course_data}}
-                    )
+                )
             # textbook does not exist, add brand new document
             else:
                 textbook['courses'] = [course_data]

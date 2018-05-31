@@ -1,5 +1,6 @@
 from ..utils import Scraper
 
+
 def get_google_books_info(isbn_13):
     '''
     Retrieve additional textbook information missing from Queen's Campus
@@ -29,7 +30,7 @@ def get_google_books_info(isbn_13):
         # [{'type': 'OTHER', 'identifier': 'UOM:39015061016815'}]
         isbn_10 = (
             [isbn['identifier'] for isbn in isbns if isbn['type'] == 'ISBN_10']
-            )
+        )
 
         if response.get('subtitle'):
             subtitle = response['subtitle']
@@ -39,7 +40,7 @@ def get_google_books_info(isbn_13):
             'isbn_10': isbn_10,
             'title': title,
             'authors': authors,
-            }
+        }
 
     return data
 
@@ -58,7 +59,6 @@ def normalize_string(names):
     for name in names:
         new_names.append(
             ' '.join([n.lower().capitalize() for n in name.split(' ')])
-            )
+        )
 
     return new_names
-
