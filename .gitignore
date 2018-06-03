@@ -103,4 +103,4 @@ ENV/
 .DS_Store
 
 # data dumps
-.dumps/
+dumps/
