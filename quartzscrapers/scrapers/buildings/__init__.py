@@ -1,1 +1,1 @@
-from .buildings import Buildings
+from .buildings import Buildings # noqa

@@ -1,3 +1,5 @@
+import os
+import json
 import time
 import requests
 
@@ -51,7 +53,6 @@ class Scraper:
 
         return response
 
-
     @staticmethod
     def save_data(data, collection):
         '''Persists scraped data into database'''
@@ -67,12 +68,19 @@ class Scraper:
         print('\nData saved\n')
 
     @staticmethod
+    def write_data(data, filename, location='./dumps'):
+        if not os.path.exists(location):
+            os.makedirs(location)
+
+        with open('{}/{}.json'.format(location, filename), 'w+') as file:
+            file.write(json.dumps(data, indent=2))
+
+    @staticmethod
     def wait(seconds=2):
         '''Temporarily halt process for a certain period of time'''
 
         print('Waiting {seconds} seconds...\n'.format(seconds=seconds))
         time.sleep(seconds)
-
 
     @staticmethod
     def handle_error(ex, func_name):
@@ -83,7 +91,6 @@ class Scraper:
             func_name=func_name,
             ex=ex
             ))
-
 
     @staticmethod
     def soupify(response):

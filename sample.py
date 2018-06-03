@@ -1,3 +1,4 @@
+import os
 import time
 import json
 import requests
@@ -60,25 +61,31 @@ def write_sample():
         results.append(data)
 
     results_json = json.dumps(
-                        results,
-                        indent=2,
-                        sort_keys=True,
-                        ensure_ascii=False,
-                        )
+        results, indent=2, sort_keys=True, ensure_ascii=False
+        )
 
     for result in results:
         result_json = json.dumps(
-                        result,
-                        indent=2,
-                        sort_keys=True,
-                        ensure_ascii=False,
-                        )
+            result, indent=2, sort_keys=True, ensure_ascii=False
+            )
 
         with open('sample.json', 'a+') as f:
             f.write(result_json)
 
     print('\nDONE')
 
+
+def rewrite_sample(filepath):
+    # The file already exists, add this course
+    if os.path.isfile(filepath):
+        with open(filepath, 'r+t') as file:
+            oldtextbook = json.loads(file.read())
+            oldtextbook['courses'].append(course_id)
+            file.seek(0)
+            file.write(json.dumps(oldtextbook, indent=4, sort_keys=True))
+    else:
+        textbook['courses'] = [course_id]
+        write_json_file(textbook, filename, 'textbooks')
 
 def write_to_mongodb_sample():
     client = MongoClient('localhost', 27017)

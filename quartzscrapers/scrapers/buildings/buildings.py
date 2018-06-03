@@ -1,3 +1,5 @@
+import re
+
 from urllib.parse import urljoin
 
 from ..utils import Scraper
@@ -14,27 +16,36 @@ class Buildings:
     host = 'http://www.queensu.ca'
 
     @staticmethod
-    def scrape():
+    def scrape(location='./dumps/buildings'):
         '''Update database records for buildings scraper'''
+
+        print("Starting buildings scrape")
 
         campuses = Buildings._get_campuses('campusmap/overall')
 
         for campus in campuses:
-            campus_relative_url = campus.find('a')['href']
-            buildings = Buildings._get_buildings(campus_relative_url)
+            campus_name = Buildings._get_campus_name(campus.text)
+            campus_url = urljoin(Buildings.host, campus.find('a')['href'])
+            buildings = Buildings._get_buildings(campus_url)
 
             for building in buildings:
-                results = []
-
                 try:
-                    building_data = Buildings._parse_building_data(
-                        campus_relative_url,
-                        building['href']
+                    building_href = building['href']
+                    building_param = building_href.split('=')[1]
+
+                    print('Building Parameter: {}'.format(building_param))
+
+                    soup = Scraper.http_request(
+                        campus_url, params={'mapquery': building_param}
                     )
 
+                    building_data = Buildings._parse_building_data(
+                        soup, campus_name, building_href)
+
                     if building_data:
-                        results.append(building_data)
-                        Scraper.save_data(results, 'buildings')
+                        Scraper.write_data(
+                            building_data, building_param, location=location)
+                        Scraper.save_data(building_data, 'buildings')
 
                 except Exception as ex:
                     Scraper.handle_error(ex, 'scrape')
@@ -57,7 +68,11 @@ class Buildings:
         return campuses
 
     @staticmethod
-    def _get_buildings(campus_relative_url):
+    def _get_campus_name(campus):
+        return campus.strip().lower().replace('the ', '').split(' campus')[0]
+
+    @staticmethod
+    def _get_buildings(campus_url):
         '''
         Get list of relative building URLs as BeautifulSoup HTML tags
 
@@ -67,12 +82,12 @@ class Buildings:
 
         # pull campus name from relative url, such as /campusmap/west,
         # which splits by '/' and grab the last value
-        campus_name = campus_relative_url.split('/')[-1]
+        campus_name = campus_url.split('/')[-1]
 
         print('Campus: {campus}'.format(campus=campus_name.upper()))
         print('========================\n')
 
-        campus_url = urljoin(Buildings.host, campus_relative_url)
+        campus_url = urljoin(Buildings.host, campus_url)
         soup = Scraper.http_request(campus_url)
         campus_map = soup.find('map')
         buildings = campus_map.find_all('area')
@@ -80,7 +95,7 @@ class Buildings:
         return buildings
 
     @staticmethod
-    def _parse_building_data(campus_relative_url, building_param):
+    def _parse_building_data(soup, campus, building_href):
         '''
         Parse data from building tags
 
@@ -88,35 +103,42 @@ class Buildings:
             Object
         '''
 
-        print('Building Parameter: {param}'.format(param=building_param))
+        def parse_label(label, is_address=False):
+            if label:
+                label_text = label.next_sibling
+                return label_text.text.strip() if is_address else label_text
 
-        building_relative_url = urljoin(campus_relative_url, building_param)
-        building_url = urljoin(Buildings.host, building_relative_url)
-        soup = Scraper.http_request(building_url)
+            return ''
 
+        # Parsing campus map tag
         campus_map = soup.find('map')
-        building = campus_map.find('area', href=building_param)
-        building_fields = soup.find_all('div', 'building-field')
+        building = campus_map.find('area', href=building_href)
 
-        # Omit 'Building Code:' from section
-        code = building_fields[1].text.strip()[14:]
-        name = soup.find('div', 'title').text.strip()
-        address = building_fields[0].find('a').text.strip()
-        polygon_raw = building['coords'].split(', ')
+        # Parsing building sidebar info
+        details = soup.find('div', class_='building-details')
+        address_label = details.find('span', text=re.compile('Address'))
+        code_label = details.find('span', text=re.compile('Building Code'))
+
+        # Actual data
+        param = building_param = building_href.split('=')[1]
+        name = soup.find('div', class_='title').text.strip()
+        code = parse_label(code_label)
+        address = parse_label(address_label, is_address=True)
+        latitude, longitude = get_building_coords(address)
 
         # convert polygon coords into tuple of integer pairs
-        polygon = [(int(p[0]), int(p[1])) for p in polygon_raw]
-
-        campus_name = campus_relative_url.split('/')[-1]
-        latitude, longitude = get_building_coords(address)
+        polygon = [
+            (int(p[0]), int(p[1])) for p in building['coords'].split(', ')
+        ]
 
         data = {
             'code': code,
+            'parameter': param,
             'name': name,
             'address': address,
             'latitude': latitude,
             'longitude': longitude,
-            'campus': campus_name,
+            'campus': campus,
             'polygon': polygon,
         }
 
