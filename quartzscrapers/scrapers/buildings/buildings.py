@@ -110,6 +110,26 @@ class Buildings:
 
             return ''
 
+        def has_accessibility(soup):
+            accessible = details.find('img', alt=re.compile('Accessibility'))
+            return True if accessible else False
+
+        def get_polygon(coords, campus):
+            '''convert polygon coords into tuple of integer pairs'''
+            polygon = []
+
+            # normalize Isabel building coordinate format
+            if campus == 'isabel':
+                coords = re.sub(r'([0-9]+),([0-9]+)', r' \1,\2', coords).strip()
+
+            coords = coords.replace('\r\n', ' ').replace('\n', ' ').split(', ')
+
+            for coords_str in coords:
+                x, y = coords_str.split(',')
+                polygon.append([int(x), int(y)])
+
+            return polygon
+
         # Parsing campus map tag
         campus_map = soup.find('map')
         building = campus_map.find('area', href=building_href)
@@ -124,16 +144,14 @@ class Buildings:
         name = soup.find('div', class_='title').text.strip()
         code = parse_label(code_label)
         address = parse_label(address_label, is_address=True)
+        is_accessible = has_accessibility(details)
         latitude, longitude = get_building_coords(address)
-
-        # convert polygon coords into tuple of integer pairs
-        polygon = [
-            (int(p[0]), int(p[1])) for p in building['coords'].split(', ')
-        ]
+        polygon = get_polygon(building['coords'], campus)
 
         data = {
+            '_parameter': param,
             'code': code,
-            'parameter': param,
+            'accessibility': is_accessible,
             'name': name,
             'address': address,
             'latitude': latitude,
