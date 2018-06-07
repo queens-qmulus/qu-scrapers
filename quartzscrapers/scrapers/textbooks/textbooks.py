@@ -3,7 +3,11 @@ from pymongo import MongoClient
 from urllib.parse import urljoin
 
 from ..utils import Scraper
-from .textbooks_helpers import get_google_books_info, normalize_string
+from .textbooks_helpers import (
+    get_google_books_info,
+    normalize_string,
+    save_textbook_data
+    )
 
 
 class Textbooks:
@@ -17,7 +21,7 @@ class Textbooks:
     host = 'https://www.campusbookstore.com'
 
     @staticmethod
-    def scrape():
+    def scrape(location='./dumps/textbooks'):
         '''Update database records for textbooks scraper'''
 
         # course department codes, such as CISC, ANAT, PHAR, etc..
@@ -44,21 +48,32 @@ class Textbooks:
                             course_page
                         )
 
-                        print('Course: {code} ({term})'.format(
-                            code=course_data['code'],
-                            term=course_data['term']
-                        ))
+                        if course_data:
+                            cd = course_data[0]
+                            term = ''
+
+                            if len(course_data) == 1:
+                                term = cd['term']
+                            else:
+                                term = 'Fall and Winter'
+
+                            print('Course: {dep}{code} ({term} {year})'.format(
+                                dep=cd['department'],
+                                code=cd['course_code'],
+                                term=term,
+                                year=cd['year']
+                            ))
+                        else:
+                            print('** No course data available')
 
                         print('--------------------------')
-                        print('Course Link: {url}\n'.format(url=course_url))
+                        print('Course Link: {}\n'.format(course_url))
 
                         textbooks = course_page.find_all(
                             'div', 'textbookHolder'
                         )
 
-                        print('{num} textbook(s) found\n'.format(
-                            num=len(textbooks)
-                        ))
+                        print('{} textbook(s) found\n'.format(len(textbooks)))
 
                         for textbook in textbooks:
                             try:
@@ -76,9 +91,8 @@ class Textbooks:
                                 Scraper.handle_error(ex, 'scrape')
 
                         if course_data or textbook_data:
-                            Textbooks._preprocess_and_save_textbooks(
-                                course_data, textbook_data
-                            )
+                            save_textbook_data(
+                                course_data, textbook_data, location)
 
                         Scraper.wait()
 
@@ -172,13 +186,29 @@ class Textbooks:
             Object
         '''
 
+        def split_string(string):
+            return re.sub(r'([a-zA-Z]+)([0-9]+)', r'\1,\2', string).split(',')
+
+        course_list = []
         regex = re.compile('[()]')
 
-        # e.g: course text: EG553 (WINTER2018)
-        course_code, course_term = (
+        # e.g: course text: ENGL223 (WINTER2018)
+        dep_course_code, year_term = (
             course_page.find('span', id='textbookCategory').text
                        .strip().split(' ')
         )
+
+        # turns ENGL223 to ENGL and 223
+        department, course_code = split_string(dep_course_code)
+
+        # strips '(' and ')' and turns (WINTER2018) WINTER and 2018
+        term_str, year = split_string(regex.sub('', year_term))
+
+        # filter for 'FW' and label as individual terms
+        terms = re.sub('FW', 'Fall,Winter', term_str).split(',')
+
+        if len(year) == 2:
+            year = ''.join(('20', year))
 
         instructors_raw = (
             [url for url in course_page.select('dd > a')
@@ -190,16 +220,19 @@ class Textbooks:
             if instructors_raw else []
         )
 
-        # strip '(' and ')'
-        term = regex.sub('', course_term)
-
         course_data = {
-            'code': course_code,
-            'term': term,
+            'year': year,
+            'term': '',
+            'department': department,
+            'course_code': course_code,
             'instructors': instructors
         }
 
-        return course_data
+        for term in terms:
+            course_data['term'] = term.lower().capitalize()
+            course_list.append(course_data)
+
+        return course_list
 
     @staticmethod
     def _parse_textbook_data(textbook, course_url):
@@ -272,35 +305,3 @@ class Textbooks:
 
         return data
 
-    @staticmethod
-    def _preprocess_and_save_textbooks(course_data, textbook_data):
-        '''
-        Preprocess and save textbook data to database. There's course infor
-        related to textbooks for this scraper. Because this is focused on
-        textbooks, it parsess through each textbook, and appends the course
-        data as the 'course' section, which is an array.
-
-        If a textbook already exists in the database, course data is appended
-        to the existing record. Otherwise, a brand new textbook record is
-        created with the associated course information.
-        '''
-
-        client = MongoClient('localhost', 27017)
-        db = client['knowledge']
-        collection = 'textbooks'
-
-        for textbook in textbook_data:
-            isbn_13 = textbook['isbn_13']
-
-            # textbook already exists, append course data to textbook data
-            if db[collection].find_one({'isbn_13': isbn_13}):
-                db[collection].find_one_and_update(
-                    {'isbn_13': isbn_13},
-                    {'$push': {'courses': course_data}}
-                )
-            # textbook does not exist, add brand new document
-            else:
-                textbook['courses'] = [course_data]
-                db[collection].insert(textbook)
-
-        print('Data saved\n')

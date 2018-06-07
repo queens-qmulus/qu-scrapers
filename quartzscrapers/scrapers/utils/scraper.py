@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import logging
 import requests
 
 from retrying import retry
@@ -11,6 +12,7 @@ from pymongo import MongoClient
 class Scraper:
     '''Scraper base class. Handles common functions amongst all sub scrapers'''
 
+    logger = logging.getLogger(__name__)
     session = requests.Session()
     headers = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp, */*;q=0.8',
@@ -73,7 +75,24 @@ class Scraper:
             os.makedirs(location)
 
         with open('{}/{}.json'.format(location, filename), 'w+') as file:
-            file.write(json.dumps(data, indent=2))
+            file.write(json.dumps(data, indent=2, ensure_ascii=False))
+
+
+    @staticmethod
+    def update_data(data, subdata, key, filename, location='./dumps'):
+        filepath = '{}/{}.json'.format(location, filename)
+
+        if os.path.isfile(filepath):
+            with open(filepath, 'r+t') as file:
+                data_old = json.loads(file.read())
+                data_old[key].append(subdata)
+
+                # rewrite file from line 0
+                file.seek(0)
+                file.write(json.dumps(data_old, indent=2))
+        else:
+            data[key] = [subdata]
+            Scraper.write_data(data, filename, location)
 
     @staticmethod
     def wait(seconds=2):
@@ -86,11 +105,7 @@ class Scraper:
     def handle_error(ex, func_name):
         '''Handle error by logging error message'''
 
-        print('{name} in {func_name}(): {ex}'.format(
-            name=ex.__class__.__name__,
-            func_name=func_name,
-            ex=ex
-            ))
+        Scraper.logger.error('Failure in {}'.format(func_name), exc_info=True)
 
     @staticmethod
     def soupify(response):
