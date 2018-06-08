@@ -1,6 +1,7 @@
 import re
 from pymongo import MongoClient
 from urllib.parse import urljoin
+from collections import OrderedDict
 
 from ..utils import Scraper
 from .textbooks_helpers import (
@@ -40,13 +41,11 @@ class Textbooks:
                     textbook_data = []
 
                     try:
-                        course_page, course_url = (
-                            Textbooks._get_course_page(course_rel_url)
-                        )
+                        course_page, course_url = Textbooks._get_course_page(
+                            course_rel_url)
 
                         course_data = Textbooks._parse_course_data(
-                            course_page
-                        )
+                            course_page, course_url)
 
                         if course_data:
                             cd = course_data[0]
@@ -55,7 +54,7 @@ class Textbooks:
                             if len(course_data) == 1:
                                 term = cd['term']
                             else:
-                                term = 'Fall and Winter'
+                                term = 'Multiple terms'
 
                             print('Course: {dep}{code} ({term} {year})'.format(
                                 dep=cd['department'],
@@ -78,9 +77,7 @@ class Textbooks:
                         for textbook in textbooks:
                             try:
                                 textbook_info = (
-                                    Textbooks._parse_textbook_data(
-                                        textbook, course_url
-                                    )
+                                    Textbooks._parse_textbook_data(textbook)
                                 )
 
                                 textbook_data.append(textbook_info)
@@ -178,7 +175,7 @@ class Textbooks:
         return soup, course_url
 
     @staticmethod
-    def _parse_course_data(course_page):
+    def _parse_course_data(course_page, course_url):
         '''
         Parse course data from course page
 
@@ -187,55 +184,99 @@ class Textbooks:
         '''
 
         def split_string(string):
-            return re.sub(r'([a-zA-Z]+)([0-9]+)', r'\1,\2', string).split(',')
+            '''Separates an alphanumeric string
+
+            E.g: WINTER18 becomes WINTER, [18]
+            '''
+
+            # some phrases could have multiple hyphens, like
+            # 'COMM181-001,-002'. Separate word from num to get
+            # ['COMM', '181-001', '-002'], conjoin the 2nd index onwards to
+            # one string as '181-001-002', and split again to
+            # ['181', '001', '002']. Splice into an array of numbered extras
+            # such as ['181-001', '181-002']
+            rgx1, rgx2 = r'([a-zA-Z]+)([0-9]+)', r'\1,\2'
+
+            # Extended Iterable Unpacking (PEP 3132). If too many variables to
+            # unpack, the remainder fall under num_raw as an array.
+            word, *num_raw = re.sub(rgx1, rgx2, string).split(',')
+            num, *extras = ''.join(num_raw).split('-')
+            nums = ['-'.join([num, extra]) for extra in extras] or [num]
+
+            return word, nums
+
+        def clean_term(term):
+            '''Cleans parsed term.
+
+            Current known dirty terms:
+            - SUM
+            - LSUM, LWIN, LSPRING,
+            - SPSU
+            - FW
+            '''
+            TERM_MAP = {
+                'WIN': 'Winter',
+                'SUM': 'Summer',
+                'SPSU': 'Spring,Summer',
+                'FW': 'Fall,Winter',
+            }
+
+            # remove leading 'L' from 'LSUM', 'LWIN', etc
+            term = term.lstrip('L')
+            return TERM_MAP.get(term, term).split(',')
 
         course_list = []
         regex = re.compile('[()]')
 
         # e.g: course text: ENGL223 (WINTER2018)
-        dep_course_code, year_term = (
-            course_page.find('span', id='textbookCategory').text
-                       .strip().split(' ')
-        )
+        dep_course_code, year_term = course_page.find(
+            'span', id='textbookCategory'
+            ).text.strip().split(' ')
 
         # turns ENGL223 to ENGL and 223
-        department, course_code = split_string(dep_course_code)
+        department, course_codes = split_string(dep_course_code)
 
         # strips '(' and ')' and turns (WINTER2018) WINTER and 2018
-        term_str, year = split_string(regex.sub('', year_term))
+        # CONT courses have 'CTE' trailing their course codes, such as
+        # LWIN18CTE, which is stripped
+        term_raw, year_raw = split_string(regex.sub('', year_term).strip('CTE'))
 
-        # filter for 'FW' and label as individual terms
-        terms = re.sub('FW', 'Fall,Winter', term_str).split(',')
+        terms = clean_term(term_raw)
+        year = year_raw[0]
 
         if len(year) == 2:
             year = ''.join(('20', year))
 
-        instructors_raw = (
-            [url for url in course_page.select('dd > a')
-                if re.search('people', url['href'])][0]
-        )
+        instructor_raw = course_page.find('a', href=re.compile('people'))
 
-        instructors = (
-            normalize_string(instructors_raw.text.strip().split(', '))
-            if instructors_raw else []
+        instructor = ' '.join(
+            normalize_string(instructor_raw.text.strip().split(' '))
+            if instructor_raw else []
         )
 
         course_data = {
             'year': year,
             'term': '',
             'department': department,
-            'course_code': course_code,
-            'instructors': instructors
+            'course_code': '',
+            'url': course_url,
+            'instructor': instructor
         }
 
         for term in terms:
-            course_data['term'] = term.lower().capitalize()
-            course_list.append(course_data)
+            for course_code in course_codes:
+                # course_data['term'] = term.lower().capitalize()
+                course_data.update({
+                    'term': term.lower().capitalize(),
+                    'course_code': course_code,
+                })
+
+                course_list.append(OrderedDict(course_data))
 
         return course_list
 
     @staticmethod
-    def _parse_textbook_data(textbook, course_url):
+    def _parse_textbook_data(textbook):
         '''
         Parse textbook data from course page
 
@@ -279,12 +320,19 @@ class Textbooks:
             authors = google_books_info['authors']
             isbn_10 = google_books_info['isbn_10'][0]
         else:
-            title_raw, authors_raw = (
-                textbook.select('div.textbookInfoHolder > h2')[0]
-                        .text.strip().split('by')
-            )
+            title_str = textbook.find(
+                'div', class_='textbookInfoHolder').find('h2').text.strip()
 
-            title = title_raw.strip()
+            *title_raw, authors_raw = re.sub(
+                r'[ ]+by$', ' by ', title_str).split(' by ')
+
+            # rebuild array name into title. For example, if the title is
+            # "Writing by Choice by Eric Henderson", title_raw will
+            # be ['Writing, Choice'], and converted into 'Writing by Choice'
+            title_combined = ' by '.join(title_raw).strip()
+
+            # Remove whitespace between titles
+            title = re.sub(r'\s+', ' ', title_combined)
             authors = authors_raw.strip().replace('/', ', ').split(', ')
             isbn_10 = None
 
@@ -299,7 +347,6 @@ class Textbooks:
             'image': image_url,
             'price_new': price_new,
             'price_used': price_used,
-            'link': course_url,
             'status': status
         }
 

@@ -89,7 +89,7 @@ class Scraper:
 
                 # rewrite file from line 0
                 file.seek(0)
-                file.write(json.dumps(data_old, indent=2))
+                file.write(json.dumps(data_old, indent=2, ensure_ascii=False))
         else:
             data[key] = [subdata]
             Scraper.write_data(data, filename, location)

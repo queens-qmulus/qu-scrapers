@@ -21,23 +21,23 @@ def get_google_books_info(isbn_13):
     if response.get('items'):
         response = response['items'][0]['volumeInfo']
 
-        isbns = response['industryIdentifiers']
-        title = response['title'].strip()
-        authors = response['authors']
+        isbns = response.get('industryIdentifiers', '')
+        title = response.get('title', '').strip()
+        authors = response.get('authors', '')
 
         # API shows both isbn 10 and 13 in an array of any order.
         # Sometimes it shows unrelated data, such as
         # [{'type': 'OTHER', 'identifier': 'UOM:39015061016815'}]
         isbn_10 = (
-            [isbn['identifier'] for isbn in isbns if isbn['type'] == 'ISBN_10']
+            [isbn.get('identifier') for isbn in isbns if isbn['type'] == 'ISBN_10']
         )
 
         if response.get('subtitle'):
-            subtitle = response['subtitle']
+            subtitle = response.get('subtitle')
             title = '{title}: {sub}'.format(title=title, sub=subtitle)
 
         data = {
-            'isbn_10': isbn_10,
+            'isbn_10': isbn_10 or [''],
             'title': title,
             'authors': authors,
         }
@@ -76,9 +76,8 @@ def save_textbook_data(course_list, textbook_list, location):
 
     for course_data in course_list:
         for textbook_data in textbook_list:
-            filename = '{year}-{term}-{isbn}'.format(
+            filename = '{year}_{isbn}'.format(
                 year=course_data['year'],
-                term=course_data['term'].upper(),
                 isbn=textbook_data['isbn_13'],
             )
 
