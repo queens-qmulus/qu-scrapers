@@ -137,7 +137,7 @@ class AlumniReviewScraper:
             'updated': published_iso,
             'authors': authors,
             'content': content,
-            'contentRaw': content_raw,
+            'content_raw': content_raw,
             }
 
         return data

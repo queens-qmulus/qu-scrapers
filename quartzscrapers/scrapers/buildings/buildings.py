@@ -45,7 +45,6 @@ class Buildings:
                     if building_data:
                         Scraper.write_data(
                             building_data, building_param, location)
-                        Scraper.save_data(building_data, 'buildings')
 
                 except Exception as ex:
                     Scraper.handle_error(ex, 'scrape')
