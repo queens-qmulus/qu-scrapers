@@ -1,6 +1,7 @@
 import googlemaps
 
-GOOGLE_MAPS_KEY = 'AIzaSyAysepZt8npudoPnYbeQjR0GzR4sUA_PmU'
+from ..utils.config import GOOGLE_MAPS_KEY
+
 gmaps = googlemaps.Client(key=GOOGLE_MAPS_KEY)
 
 

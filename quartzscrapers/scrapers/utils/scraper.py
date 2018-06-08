@@ -123,7 +123,7 @@ class Scraper:
             return BeautifulSoup(response.text, parser)
 
         # XML markup
-        if 'xml' in response.headers.get('content-type', 'unknown'):
+        if 'xml' in content_type:
             return get_soup('lxml')
 
         # HTML markup

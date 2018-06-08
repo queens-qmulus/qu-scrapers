@@ -1,4 +1,5 @@
 from ..utils import Scraper
+from ..utils.config import GOOGLE_BOOKS_KEY
 
 
 def get_google_books_info(isbn_13):
@@ -13,10 +14,13 @@ def get_google_books_info(isbn_13):
     data = {}
 
     response = Scraper.http_request(
-        url='https://www.googleapis.com/books/v1/volumes',
-        params=dict(q='ibsn:{isbn}'.format(isbn=isbn_13)),
         parse=False,
-        ).json()
+        url='https://www.googleapis.com/books/v1/volumes',
+        params=dict(q='ibsn:{isbn}',key='{key}'.format(
+            isbn=isbn_13,
+            key=GOOGLE_BOOKS_KEY)
+        )
+    ).json()
 
     if response.get('items'):
         response = response['items'][0]['volumeInfo']

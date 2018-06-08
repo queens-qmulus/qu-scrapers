@@ -293,10 +293,8 @@ class Textbooks:
         status_raw = textbook.find('dd', 'textbookStatus')
         status = status_raw.text.strip() if status_raw else None
 
-        isbn_13 = (
-            textbook.find('dt', text=re.compile('ISBN'))
-                    .next_sibling.next_sibling.text.strip()
-        )
+        isbn_13 = textbook.find('dt', text=re.compile('ISBN')
+            ).next_sibling.next_sibling.text.strip()
 
         print('Textbook ISBN: {isbn}'.format(isbn=isbn_13))
 
