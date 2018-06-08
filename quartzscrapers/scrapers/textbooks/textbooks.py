@@ -265,7 +265,6 @@ class Textbooks:
 
         for term in terms:
             for course_code in course_codes:
-                # course_data['term'] = term.lower().capitalize()
                 course_data.update({
                     'term': term.lower().capitalize(),
                     'course_code': course_code,
