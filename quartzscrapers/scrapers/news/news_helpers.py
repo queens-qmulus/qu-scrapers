@@ -3,6 +3,13 @@ import re
 from ..utils import Scraper
 
 
+def get_scrape_depth(urls, deep=False):
+    if deep:
+        print('Deep scrape active. Scraping every article\n')
+        return urls
+    else:
+        return [urls[0]]
+
 def save_article(article_data, location):
     date, _ = article_data['published'].split('T')
     title_raw = article_data['url'].split('/')[-1]

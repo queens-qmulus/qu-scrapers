@@ -2,8 +2,10 @@ import pendulum
 from urllib.parse import urljoin
 
 from ..utils import Scraper
+from .news_helpers import save_article, get_scrape_depth
 
-class JurisDictionScraper:
+
+class JurisDiction:
     '''
         Scraper for Juris Diction news source, Queen's Law Newspaper.
     '''
@@ -12,58 +14,57 @@ class JurisDictionScraper:
     slug = 'jurisdiction'
 
     @staticmethod
-    def scrape(collection='articles'):
+    def scrape(deep=False, location='./dumps/news'):
         '''
         Parse information custom to Juris Diction.
         '''
 
         try:
-            archive_month_urls = JurisDictionScraper._get_archive_month_urls()
+            archive_month_urls = get_scrape_depth(
+                JurisDiction._get_archive_month_urls(), deep)
 
             for archive_month_url in archive_month_urls:
                 try:
                     print('ARCHIVE: {url}\n'.format(url=archive_month_url))
 
-                    archive_page_urls = (
-                        JurisDictionScraper._get_archive_page_urls(
-                            archive_month_url
-                        ))
+                    archive_page_urls = JurisDiction._get_archive_page_urls(
+                        archive_month_url)
 
                     page_num = 1
 
                     for archive_page_url in archive_page_urls:
-                        results = []
-
                         try:
                             archive_page = Scraper.http_request(archive_page_url)
 
                             print('Page {page_num}'.format(page_num=page_num))
                             print('-------')
 
-                            article_urls = (
-                                JurisDictionScraper._get_rel_article_urls(
-                                    archive_page
-                                ))
+                            article_rel_urls = JurisDiction._get_rel_article_urls(
+                                archive_page)
 
-
-                            for article_url in article_urls:
-                                print('Article: {url}'.format(url=article_url))
+                            for article_rel_url in article_rel_urls:
+                                print('Article: {url}'.format(url=article_rel_url))
 
                                 try:
+                                    article_page, article_url = (
+                                        JurisDiction._get_article_page(
+                                            article_rel_url
+                                        )
+                                    )
+
                                     article_data = (
-                                        JurisDictionScraper._parse_news_data(
-                                            article_url
-                                        ))
+                                        JurisDiction._parse_news_data(
+                                            article_page, article_url
+                                        )
+                                    )
 
                                     if article_data:
-                                        results.append(article_data)
+                                        save_article(article_data, location)
 
                                     Scraper.wait()
 
                                 except Exception as ex:
                                     Scraper.handle_error(ex, 'scrape')
-
-                            Scraper.save_data(results, collection)
 
                             page_num += 1
 
@@ -76,7 +77,6 @@ class JurisDictionScraper:
         except Exception as ex:
             Scraper.handle_error(ex, 'scrape')
 
-
     @staticmethod
     def _get_archive_month_urls():
         '''
@@ -86,13 +86,12 @@ class JurisDictionScraper:
             List[String]
         '''
 
-        soup = Scraper.http_request(JurisDictionScraper.host)
+        soup = Scraper.http_request(JurisDiction.host)
 
         archives = soup.find('div', id='archives-3').find_all('li')
-        archive_month_urls = [archive.find('a')['href'] for archive in archives]
+        archive_month_urls = [arch.find('a')['href'] for arch in archives]
 
         return archive_month_urls
-
 
     @staticmethod
     def _get_archive_page_urls(archive_month_url):
@@ -117,7 +116,6 @@ class JurisDictionScraper:
 
         return archive_page_urls
 
-
     @staticmethod
     def _get_rel_article_urls(archive_page):
         '''
@@ -134,9 +132,15 @@ class JurisDictionScraper:
 
         return article_rel_urls
 
+    @staticmethod
+    def _get_article_page(article_rel_url):
+        article_url = urljoin(JurisDiction.host, article_rel_url)[:-1]
+        article_page =  Scraper.http_request(article_url)
+
+        return article_page, article_url
 
     @staticmethod
-    def _parse_news_data(article_rel_url):
+    def _parse_news_data(article_page, article_url):
         '''
         Parse data from article page tags
 
@@ -144,30 +148,27 @@ class JurisDictionScraper:
             Object
         '''
 
-        article_url = urljoin(JurisDictionScraper.host, article_rel_url)[:-1]
-        soup = Scraper.http_request(article_url)
-
-        title = soup.find('h1', 'entry-title').text.strip()
+        title = article_page.find('h1', 'entry-title').text.strip()
 
         # Queen's Juris Diction uses HTML5 element 'time', which already
         # contains ISO format in 'datetime' attribute
-        published_iso = soup.find('time')['datetime']
+        published_iso = article_page.find('time')['datetime']
 
         # Multiple authors are listed with commas, except for last author with
         # 'and' such as 'John, Alex and Jason'.
-        authors_raw = soup.find('a', 'author-name')
+        authors_raw = article_page.find('a', 'author-name')
         authors = (
             authors_raw.text.replace(' and', ',').split(', ')
             if authors_raw else []
             )
 
-        content = soup.find('div', 'vw-post-content').text.strip()
-        content_raw = str(soup.find('div', 'vw-post-content'))
+        content = article_page.find('div', 'vw-post-content').text.strip()
+        content_raw = str(article_page.find('div', 'vw-post-content'))
 
         data = {
             'title': title,
-            'slug': JurisDictionScraper.slug,
-            'link': article_url,
+            'slug': JurisDiction.slug,
+            'url': article_url,
             'published': published_iso,
             'updated': published_iso,
             'authors': authors,
