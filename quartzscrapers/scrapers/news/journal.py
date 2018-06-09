@@ -3,6 +3,8 @@ import pendulum
 from urllib.parse import urljoin
 
 from ..utils import Scraper
+from .news_helpers import save_article
+
 
 class Journal:
     '''
@@ -61,8 +63,7 @@ class Journal:
                                 )
 
                                 if article_data:
-                                    Journal._save_article(
-                                        article_data, location)
+                                    save_article(article_data, location)
 
                                 Scraper.wait()
                             except Exception as ex:
@@ -94,7 +95,7 @@ class Journal:
         year_rel_urls = [url.find('a')['href'] for url in year_urls]
 
         if deep:
-            Scraper.logger.info('Deep scrape active. Scraping every article..')
+            print('Deep scrape active. Scraping every article\n')
         else:
             year_rel_urls = [year_rel_urls[0]]
 
@@ -144,20 +145,11 @@ class Journal:
     @staticmethod
     def _get_article_page(article_rel_url):
         article_url = urljoin(Journal.host, article_rel_url)[:-1]
-        soup = Scraper.http_request(article_url)
+        article_page = Scraper.http_request(article_url)
 
         print('Article: {url}'.format(url=article_url))
 
-        return soup, article_url
-
-    @staticmethod
-    def _save_article(article_data, location):
-        date = article_data['published']
-        title = article_data['url'].split('/')[-1]
-        article_filename = '{date}_{title}'.format(date=date, title=title)
-
-        Scraper.write_data(article_data, article_filename, location)
-        print('Article data saved\n')
+        return article_page, article_url
 
     @staticmethod
     def _parse_article_data(article_page, article_url):
