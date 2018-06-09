@@ -152,7 +152,8 @@ class JurisDiction:
 
         # Queen's Juris Diction uses HTML5 element 'time', which already
         # contains ISO format in 'datetime' attribute
-        published_iso = article_page.find('time')['datetime']
+        published_iso = article_page.find('div', class_='vw-post-meta-inner'
+            ).find('time')['datetime']
 
         # Multiple authors are listed with commas, except for last author with
         # 'and' such as 'John, Alex and Jason'.
