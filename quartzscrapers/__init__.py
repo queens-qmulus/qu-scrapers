@@ -3,7 +3,7 @@ from quartzscrapers.scrapers.buildings import Buildings
 from quartzscrapers.scrapers.news import (
     News,
     Journal,
-    GazetteScraper,
+    Gazette,
     AlumniReviewScraper,
     SmithMagazine,
     JurisDiction,

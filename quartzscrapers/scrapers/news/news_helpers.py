@@ -1,14 +1,23 @@
 import re
+from urllib.parse import urljoin
 
 from ..utils import Scraper
 
 
-def get_scrape_depth(urls, deep=False):
+def get_urls_on_depth(urls, deep=False):
     if deep:
         print('Deep scrape active. Scraping every article\n')
         return urls
     else:
         return [urls[0]]
+
+def get_article_page(host_url, article_rel_url):
+    article_url = urljoin(host_url, article_rel_url)
+    article_page = Scraper.http_request(article_url)
+
+    print('Article: {url}'.format(url=article_url))
+
+    return article_page, article_url
 
 def save_article(article_data, location):
     date, _ = article_data['published'].split('T')

@@ -3,7 +3,7 @@ from urllib.parse import urljoin
 
 from ..utils import Scraper
 from .journal import Journal
-# from .gazette import GazetteScraper
+from .gazette import Gazette
 # from .alumnireview import AlumniReviewScraper
 from .smith_magazine import SmithMagazine
 from .jurisdiction import JurisDiction
@@ -26,10 +26,10 @@ class News:
 
     news_sources = [
         # Journal,
-        # GazetteScraper,
+        Gazette,
         # AlumniReviewScraper,
         # SmithMagazine,
-        JurisDiction,
+        # JurisDiction,
     ]
 
     @staticmethod
@@ -45,7 +45,7 @@ class News:
 
             start_time = time.time()
             news_source.scrape(
-                deep=True,
+                # deep=True,
                 location='./dumps/news_{slug}'.format(slug=news_source.slug),
             )
             total_time = time.time() - start_time

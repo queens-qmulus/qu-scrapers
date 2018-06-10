@@ -2,8 +2,10 @@ import pendulum
 from urllib.parse import urljoin
 
 from ..utils import Scraper
+from .news_helpers import save_article, get_article_page
 
-class GazetteScraper:
+
+class Gazette:
     '''
     Scraper for Queen's Gazette news source.
     '''
@@ -12,10 +14,10 @@ class GazetteScraper:
     slug = 'gazette'
 
     @staticmethod
-    def scrape(collection='articles'):
+    def scrape(deep=False, location='./dumps/news'):
         '''Parse information custom to Queen's Gazette'''
 
-        num_pages = GazetteScraper._get_num_pages('gazette/stories/all')
+        num_pages = Gazette._get_num_pages(deep)
 
         print('Total Pages: {num_pages}'.format(num_pages=num_pages))
         print('===================================\n')
@@ -23,34 +25,31 @@ class GazetteScraper:
         for page_index in range(num_pages):
             print('Page {page_num}'.format(page_num=(page_index + 1)))
             print('---------')
-            results = []
 
             try:
-                article_rel_urls = GazetteScraper._get_article_rel_urls(
-                    'gazette/stories/all', page_index
-                    )
+                article_rel_urls = Gazette._get_article_rel_urls(page_index)
 
                 for article_rel_url in article_rel_urls:
                     try:
-                        article_data = GazetteScraper._parse_news_data(
-                            article_rel_url
-                            )
+                        article_page, article_url = get_article_page(
+                            Gazette.host, article_rel_url)
+
+                        article_data = Gazette._parse_article_data(
+                            article_page, article_url)
 
                         if article_data:
-                            results.append(article_data)
+                            save_article(article_data, location)
 
                         Scraper.wait()
 
                     except Exception as ex:
                         Scraper.handle_error(ex, 'scrape')
 
-                Scraper.save_data(results, collection)
-
             except Exception as ex:
                 Scraper.handle_error(ex, 'scrape')
 
     @staticmethod
-    def _get_num_pages(relative_url):
+    def _get_num_pages(deep):
         '''
         Request URL for all archived articles and parse number of pages to
         crawl.
@@ -59,20 +58,31 @@ class GazetteScraper:
             Int
         '''
 
-        stories_all_url = urljoin(GazetteScraper.host, relative_url)
-        soup = Scraper.http_request(stories_all_url)
+        params = {}
 
-        page_link = soup.find('li', 'pager-last').find('a')['href']
+        if deep:
+            print('Deep scrape active. Scraping every article\n')
+        else:
+            year = pendulum.now().format('YYYY')
+            params.update({
+                'field_publication_date_value[min][date]': '{}-01-01'.format(year),
+                'field_publication_date_value[max][date]': '{}-12-31'.format(year),
+            })
+
+        stories_all_url = urljoin(Gazette.host, 'gazette/stories/all')
+        soup = Scraper.http_request(stories_all_url, params=params)
+
+        page_url = soup.find('li', 'pager-last').find('a')['href']
 
         # get last two digits from link of last page, i.e;
         # '/story/archive/news/2012/?page=13' results in 13
-        index = page_link.rfind('=')
-        num_pages = int(page_link[(index + 1):]) + 1 # +1 to go from 0 to n
+        index = page_url.rfind('=')
+        num_pages = int(page_url[(index + 1):]) + 1 # +1 to go from 0 to n
 
         return num_pages
 
     @staticmethod
-    def _get_article_rel_urls(relative_url, page_index):
+    def _get_article_rel_urls(page_index):
         '''
         Gets list of relative URLs for articles. Queen's Gazette displays
         approximately 16 articles per page.
@@ -81,7 +91,7 @@ class GazetteScraper:
             List[String]
         '''
 
-        article_url = urljoin(GazetteScraper.host, relative_url)
+        article_url = urljoin(Gazette.host, 'gazette/stories/all')
         soup =  Scraper.http_request(article_url, params=dict(page=page_index))
 
         articles = soup.find_all('div', 'story-title')
@@ -91,7 +101,17 @@ class GazetteScraper:
 
 
     @staticmethod
-    def _parse_news_data(article_rel_url):
+    def _get_article_page(article_rel_url):
+        article_url = urljoin(Gazette.host, article_rel_url)
+        article_page = Scraper.http_request(article_url)
+
+        print('Article: {url}'.format(url=article_url))
+
+        return article_page, article_url
+
+
+    @staticmethod
+    def _parse_article_data(article_page, article_url):
         '''
         Parse data from article page tags
 
@@ -99,15 +119,10 @@ class GazetteScraper:
             Object
         '''
 
-        article_url = urljoin(GazetteScraper.host, article_rel_url)
-        soup = Scraper.http_request(article_url)
-
-        print('Article: {url}'.format(url=article_url))
-
-        title = soup.find('h1', 'title').text.strip()
+        title = article_page.find('h1', 'title').text.strip()
 
        # Find publish date and convert to ISO time standard
-        published = soup.find('div', 'story-pub-date').text.strip()
+        published = article_page.find('div', 'story-pub-date').text.strip()
         published_iso = pendulum.parse(published, strict=False).isoformat()
 
         # Queen's gazette doesn't list authors, they either show an author
@@ -116,17 +131,17 @@ class GazetteScraper:
         # Gazette also includes author title such as "Alex, Communications".
         # Remove job title, and split by ' with ' to create authors array
         authors_raw = (
-            soup.find('div', 'story-byline').text.strip()[3:].split(',')[0]
+            article_page.find('div', 'story-byline').text.strip()[3:].split(',')[0]
             )
         authors = authors_raw.split(' with ') if authors_raw else []
 
-        content = soup.find('div', 'story-body').text.strip()
-        content_raw = str(soup.find('div', 'story-body'))
+        content = article_page.find('div', 'story-body').text.strip()
+        content_raw = str(article_page.find('div', 'story-body'))
 
         data = {
             'title': title,
-            'slug': GazetteScraper.slug,
-            'link': article_url,
+            'slug': Gazette.slug,
+            'url': article_url,
             'published': published_iso,
             'updated': published_iso,
             'authors': authors,
