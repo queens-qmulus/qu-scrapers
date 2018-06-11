@@ -20,9 +20,6 @@ class SmithMagazine:
         '''
 
         try:
-            magazine_issue_rel_urls = SmithMagazine._get_magazine_issues(
-                'magazine/archive', deep)
-
             magazine_issue_rel_urls = get_urls_on_depth(
                 SmithMagazine._get_magazine_issues(), deep)
 

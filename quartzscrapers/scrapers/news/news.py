@@ -1,6 +1,3 @@
-import time
-from urllib.parse import urljoin
-
 from ..utils import Scraper
 from .journal import Journal
 from .gazette import Gazette
@@ -25,11 +22,11 @@ class News:
     '''
 
     news_sources = [
-        # Journal,
-        # Gazette,
+        Journal,
+        Gazette,
         AlumniReview,
-        # SmithMagazine,
-        # JurisDiction,
+        SmithMagazine,
+        JurisDiction,
     ]
 
     @staticmethod
@@ -37,20 +34,11 @@ class News:
         '''Update database records for news scraper'''
 
         for news_source in News.news_sources:
-            print('Starting {source} scraper'.format(source=news_source.slug))
+            print('Starting {} scraper'.format(news_source.slug))
             print('==================================\n')
 
-            # TODO: Remove collection param when completed data validity of
-            # all news scrapers
+            news_source.scrape(deep=deep)
 
-            start_time = time.time()
-            news_source.scrape(
-                deep=True,
-                location='./dumps/news_{slug}'.format(slug=news_source.slug),
-            )
-            total_time = time.time() - start_time
+            print('\nDone {} scraper\n'.format(news_source.slug))
 
-            print('\nDone {source} scraper in {seconds} s\n'.format(
-                source=news_source.slug, seconds=total_time))
-
-        print('Completed news sources')
+        print('Done all news scrapers')

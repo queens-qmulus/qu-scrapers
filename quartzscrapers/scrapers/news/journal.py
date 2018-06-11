@@ -76,7 +76,7 @@ class Journal:
 
 
     @staticmethod
-    def _get_archive_years(relative_url, deep):
+    def _get_archive_years():
         '''Get list of relative archive year URLs.
 
         If a deep scrape is initiated, scraper will scrape every single archive
@@ -175,7 +175,7 @@ class Journal:
         data = {
             'title': title,
             'slug': Journal.slug,
-            'url': article_url,
+            'url': article_url[:-1],
             'published': published_iso,
             'updated': updated_iso,
             'authors': authors,

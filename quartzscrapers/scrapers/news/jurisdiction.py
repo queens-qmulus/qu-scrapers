@@ -157,7 +157,7 @@ class JurisDiction:
         data = {
             'title': title,
             'slug': JurisDiction.slug,
-            'url': article_url,
+            'url': article_url[:-1],
             'published': published_iso,
             'updated': published_iso,
             'authors': authors,

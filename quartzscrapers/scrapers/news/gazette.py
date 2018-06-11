@@ -1,3 +1,4 @@
+import re
 import pendulum
 from urllib.parse import urljoin
 
@@ -11,9 +12,15 @@ class Gazette:
     '''
 
     host = 'http://www.queensu.ca'
+    slug = 'gazette'
 
     @staticmethod
-    def scrape(deep=False, location='./dumps/news', relative_url='gazette/stories/all', slug='gazette'):
+    def scrape(
+        deep=False,
+        location='./dumps/news',
+        relative_url='gazette/stories/all',
+        slug=slug
+    ):
         '''Parse information custom to Queen's Gazette'''
 
         num_pages = Gazette._get_num_pages(relative_url, deep)
@@ -103,8 +110,8 @@ class Gazette:
         # For alumnireview, there's no published dates due this outlet being
         # an issue-based resource. Parse issue-date year at least for a
         # date of YYYY-XX-XX
-        article_issue_dates = [article.find('div', class_='story-issue')
-            .text.strip()[:4] for article in articles
+        article_issue_dates = [
+            article.find('div', class_='story-issue') for article in articles
         ]
 
         return article_rel_urls, article_issue_dates
@@ -139,7 +146,8 @@ class Gazette:
             published_iso = pendulum.parse(published, strict=False).isoformat()
         else:
             # no date for AlumniReview. Use issue year
-            published_iso = pendulum.parse(issue_date).isoformat()
+            issue_year = re.search(r'\d{4}', issue_date.text).group(0)
+            published_iso = pendulum.parse(issue_year).isoformat()
 
         # Queen's gazette doesn't list authors, they either show an author
         # or show a team of authors under a team name. Anomalies include
