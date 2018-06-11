@@ -4,7 +4,7 @@ from quartzscrapers.scrapers.news import (
     News,
     Journal,
     Gazette,
-    AlumniReviewScraper,
+    AlumniReview,
     SmithMagazine,
     JurisDiction,
     )

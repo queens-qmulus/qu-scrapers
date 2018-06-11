@@ -2,7 +2,7 @@ import pendulum
 from urllib.parse import urljoin
 
 from ..utils import Scraper
-from .news_helpers import save_article
+from .news_helpers import get_urls_on_depth, get_article_page, save_article
 
 
 class SmithMagazine:
@@ -21,9 +21,11 @@ class SmithMagazine:
 
         try:
             magazine_issue_rel_urls = SmithMagazine._get_magazine_issues(
-                'magazine/archive',
-                deep
-            )
+                'magazine/archive', deep)
+
+            magazine_issue_rel_urls = get_urls_on_depth(
+                SmithMagazine._get_magazine_issues(), deep)
+
 
             for magazine_issue_rel_url in magazine_issue_rel_urls:
                 print('ARCHIVE: {url}\n'.format(url=magazine_issue_rel_url))
@@ -43,11 +45,10 @@ class SmithMagazine:
 
                         for article_rel_url in article_rel_urls:
                             try:
-                                article_page, article_url = (
-                                    SmithMagazine._get_article_page(article_rel_url)
-                                )
+                                article_page, article_url = get_article_page(
+                                    SmithMagazine.host, article_rel_url)
 
-                                article_data = SmithMagazine._parse_news_data(
+                                article_data = SmithMagazine._parse_article_data(
                                     article_page, article_url)
 
                                 if article_data:
@@ -65,7 +66,7 @@ class SmithMagazine:
             Scraper.handle_error(ex, 'scrape')
 
     @staticmethod
-    def _get_magazine_issues(relative_url, deep):
+    def _get_magazine_issues():
         '''
         Request URL for all archived magazine issues.
 
@@ -73,18 +74,13 @@ class SmithMagazine:
             List[String]
         '''
 
-        magazine_archive_url = urljoin(SmithMagazine.host, relative_url)
+        magazine_archive_url = urljoin(SmithMagazine.host, 'magazine/archive')
         soup = Scraper.http_request(magazine_archive_url)
 
         magazine_archives = soup.find_all('div', 'field-content')
         magazine_archive_urls = (
             [archive.find('a')['href'] for archive in magazine_archives]
             )
-
-        if deep:
-            print('Deep scrape active. Scraping every article\n')
-        else:
-            magazine_archive_urls = [magazine_archive_urls[0]]
 
         return magazine_archive_urls
 
@@ -123,16 +119,7 @@ class SmithMagazine:
         return article_rel_urls
 
     @staticmethod
-    def _get_article_page(article_rel_url):
-        article_url = urljoin(SmithMagazine.host, article_rel_url)
-        article_page = Scraper.http_request(article_url)
-
-        print('Article: {url}'.format(url=article_url))
-
-        return article_page, article_url
-
-    @staticmethod
-    def _parse_news_data(article_page, article_url):
+    def _parse_article_data(article_page, article_url):
         '''
         Parse data from article page tags
 

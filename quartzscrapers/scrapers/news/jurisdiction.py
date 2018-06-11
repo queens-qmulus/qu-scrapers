@@ -2,7 +2,7 @@ import pendulum
 from urllib.parse import urljoin
 
 from ..utils import Scraper
-from .news_helpers import save_article, get_scrape_depth
+from .news_helpers import get_urls_on_depth, get_article_page, save_article
 
 
 class JurisDiction:
@@ -20,7 +20,7 @@ class JurisDiction:
         '''
 
         try:
-            archive_month_urls = get_scrape_depth(
+            archive_month_urls = get_urls_on_depth(
                 JurisDiction._get_archive_month_urls(), deep)
 
             for archive_month_url in archive_month_urls:
@@ -43,17 +43,12 @@ class JurisDiction:
                                 archive_page)
 
                             for article_rel_url in article_rel_urls:
-                                print('Article: {url}'.format(url=article_rel_url))
-
                                 try:
-                                    article_page, article_url = (
-                                        JurisDiction._get_article_page(
-                                            article_rel_url
-                                        )
-                                    )
+                                    article_page, article_url = get_article_page(
+                                            JurisDiction.host, article_rel_url)
 
                                     article_data = (
-                                        JurisDiction._parse_news_data(
+                                        JurisDiction._parse_article_data(
                                             article_page, article_url
                                         )
                                     )
@@ -133,14 +128,7 @@ class JurisDiction:
         return article_rel_urls
 
     @staticmethod
-    def _get_article_page(article_rel_url):
-        article_url = urljoin(JurisDiction.host, article_rel_url)[:-1]
-        article_page =  Scraper.http_request(article_url)
-
-        return article_page, article_url
-
-    @staticmethod
-    def _parse_news_data(article_page, article_url):
+    def _parse_article_data(article_page, article_url):
         '''
         Parse data from article page tags
 

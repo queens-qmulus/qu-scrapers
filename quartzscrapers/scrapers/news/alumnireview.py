@@ -1,143 +1,21 @@
 import pendulum
 from urllib.parse import urljoin
 
+from .gazette import Gazette
 from ..utils import Scraper
 
-class AlumniReviewScraper:
+class AlumniReview(Gazette):
     '''
     Scraper for Queen's Alumni Review news source.
     '''
 
-    host = 'http://www.queensu.ca'
     slug = 'alumnireview'
 
     @staticmethod
-    def scrape(collection='articles'):
+    def scrape(deep=False, location='./dumps/news'):
         '''
         Parse information custom to Queen's Alumni Review. This is a
         subcategory under Queen's Gazette.
         '''
-
-        num_pages = AlumniReviewScraper._get_num_pages(
-            'gazette/alumnireview/stories'
-            )
-
-        print('Total Pages: {num_pages}'.format(num_pages=num_pages))
-        print('===================================\n')
-
-        for page_index in range(num_pages):
-            print('Page {page_num}'.format(page_num=(page_index + 1)))
-            print('---------')
-            results = []
-
-            try:
-                article_rel_urls = AlumniReviewScraper._get_article_rel_urls(
-                    'gazette/alumnireview/stories', page_index
-                    )
-
-                for article_rel_url in article_rel_urls:
-                    try:
-                        article_data = AlumniReviewScraper._parse_news_data(
-                            article_rel_url
-                            )
-
-                        if article_data:
-                            results.append(article_data)
-
-                        Scraper.wait()
-
-                    except Exception as ex:
-                        Scraper.handle_error(ex, 'scrape')
-
-                Scraper.save_data(results, collection)
-
-            except Exception as ex:
-                Scraper.handle_error(ex, 'scrape')
-
-    @staticmethod
-    def _get_num_pages(relative_url):
-        '''
-        Request URL for all archived articles and parse number of pages to
-        crawl.
-
-        Returns:
-            Int
-        '''
-
-        stories_all_url = urljoin(AlumniReviewScraper.host, relative_url)
-        soup = Scraper.http_request(stories_all_url)
-
-        page_link = soup.find('li', 'pager-last').find('a')['href']
-        index = page_link.rfind('=')
-        num_pages = int(page_link[(index + 1):]) + 1
-
-        return num_pages
-
-    @staticmethod
-    def _get_article_rel_urls(relative_url, page_index):
-        '''
-        Gets list of relative URLs for articles. Queen's Alumni Review
-        displays approximately 16 articles per page.
-
-        Returns:
-            List[String]
-        '''
-
-        article_url = urljoin(AlumniReviewScraper.host, relative_url)
-        soup =  Scraper.http_request(article_url, params=dict(page=page_index))
-
-        articles = soup.find_all('div', 'story-title')
-        article_rel_urls = [article.find('a')['href'] for article in articles]
-
-        return article_rel_urls
-
-
-    @staticmethod
-    def _parse_news_data(article_rel_url):
-        '''
-        Parse data from article page tags
-
-        Returns:
-            Object
-        '''
-        published_iso = None
-
-        article_url = urljoin(AlumniReviewScraper.host, article_rel_url)
-        soup = Scraper.http_request(article_url)
-
-        print('Article: {url}'.format(url=article_url))
-
-        title = soup.find('h1', 'title').text.strip()
-
-       # Find publish date and convert to ISO time standard
-        published_raw = soup.find('div', 'story-pub-date')
-
-        if published_raw:
-            published = published_raw.text.strip()
-            published_iso = pendulum.parse(published, strict=False).isoformat()
-
-        # Queen's gazette doesn't list authors, they either show an author
-        # or show a team of authors under a team name. Anomalies include
-        # showing two authors using 'with', such as 'By John with Alex'.
-        # Gazette also includes author title such as "Alex, Communications".
-        # Remove job title, and split by ' with ' to create authors array
-        authors_raw = (
-            soup.find('div', 'story-byline').text.strip()[3:].split(',')[0]
-            )
-        authors = authors_raw.split(' with ') if authors_raw else []
-
-        content = soup.find('div', 'story-body').text.strip()
-        content_raw = str(soup.find('div', 'story-body'))
-
-        data = {
-            'title': title,
-            'slug': AlumniReviewScraper.slug,
-            'link': article_url,
-            'published': published_iso,
-            'updated': published_iso,
-            'authors': authors,
-            'content': content,
-            'content_raw': content_raw,
-            }
-
-        return data
+        super(AlumniReview, AlumniReview).scrape(
+            deep, location, 'gazette/alumnireview/stories', AlumniReview.slug)

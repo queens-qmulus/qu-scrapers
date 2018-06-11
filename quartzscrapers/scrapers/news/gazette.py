@@ -11,13 +11,12 @@ class Gazette:
     '''
 
     host = 'http://www.queensu.ca'
-    slug = 'gazette'
 
     @staticmethod
-    def scrape(deep=False, location='./dumps/news'):
+    def scrape(deep=False, location='./dumps/news', relative_url='gazette/stories/all', slug='gazette'):
         '''Parse information custom to Queen's Gazette'''
 
-        num_pages = Gazette._get_num_pages(deep)
+        num_pages = Gazette._get_num_pages(relative_url, deep)
 
         print('Total Pages: {num_pages}'.format(num_pages=num_pages))
         print('===================================\n')
@@ -27,15 +26,17 @@ class Gazette:
             print('---------')
 
             try:
-                article_rel_urls = Gazette._get_article_rel_urls(page_index)
+                article_rel_urls, article_issue_dates = (
+                    Gazette._get_article_rel_urls(relative_url, page_index
+                ))
 
-                for article_rel_url in article_rel_urls:
+                for article_rel_url, issue_date in zip(article_rel_urls, article_issue_dates):
                     try:
                         article_page, article_url = get_article_page(
                             Gazette.host, article_rel_url)
 
                         article_data = Gazette._parse_article_data(
-                            article_page, article_url)
+                            article_page, article_url, issue_date, slug)
 
                         if article_data:
                             save_article(article_data, location)
@@ -49,7 +50,7 @@ class Gazette:
                 Scraper.handle_error(ex, 'scrape')
 
     @staticmethod
-    def _get_num_pages(deep):
+    def _get_num_pages(relative_url, deep):
         '''
         Request URL for all archived articles and parse number of pages to
         crawl.
@@ -69,7 +70,7 @@ class Gazette:
                 'field_publication_date_value[max][date]': '{}-12-31'.format(year),
             })
 
-        stories_all_url = urljoin(Gazette.host, 'gazette/stories/all')
+        stories_all_url = urljoin(Gazette.host, relative_url)
         soup = Scraper.http_request(stories_all_url, params=params)
 
         page_url = soup.find('li', 'pager-last').find('a')['href']
@@ -82,7 +83,7 @@ class Gazette:
         return num_pages
 
     @staticmethod
-    def _get_article_rel_urls(page_index):
+    def _get_article_rel_urls(relative_url, page_index):
         '''
         Gets list of relative URLs for articles. Queen's Gazette displays
         approximately 16 articles per page.
@@ -91,13 +92,22 @@ class Gazette:
             List[String]
         '''
 
-        article_url = urljoin(Gazette.host, 'gazette/stories/all')
+        article_url = urljoin(Gazette.host, relative_url)
         soup =  Scraper.http_request(article_url, params=dict(page=page_index))
 
-        articles = soup.find_all('div', 'story-title')
+        articles = soup.find_all('div', class_='story-info')
+
+        article_issues = soup.find_all('div', class_='story-issue')
         article_rel_urls = [article.find('a')['href'] for article in articles]
 
-        return article_rel_urls
+        # For alumnireview, there's no published dates due this outlet being
+        # an issue-based resource. Parse issue-date year at least for a
+        # date of YYYY-XX-XX
+        article_issue_dates = [article.find('div', class_='story-issue')
+            .text.strip()[:4] for article in articles
+        ]
+
+        return article_rel_urls, article_issue_dates
 
 
     @staticmethod
@@ -111,7 +121,7 @@ class Gazette:
 
 
     @staticmethod
-    def _parse_article_data(article_page, article_url):
+    def _parse_article_data(article_page, article_url, issue_date, slug):
         '''
         Parse data from article page tags
 
@@ -121,9 +131,15 @@ class Gazette:
 
         title = article_page.find('h1', 'title').text.strip()
 
-       # Find publish date and convert to ISO time standard
-        published = article_page.find('div', 'story-pub-date').text.strip()
-        published_iso = pendulum.parse(published, strict=False).isoformat()
+        # Find publish date and convert to ISO time standard
+        published_raw = article_page.find('div', 'story-pub-date')
+
+        if published_raw:
+            published = published_raw.text.strip()
+            published_iso = pendulum.parse(published, strict=False).isoformat()
+        else:
+            # no date for AlumniReview. Use issue year
+            published_iso = pendulum.parse(issue_date).isoformat()
 
         # Queen's gazette doesn't list authors, they either show an author
         # or show a team of authors under a team name. Anomalies include
@@ -140,7 +156,7 @@ class Gazette:
 
         data = {
             'title': title,
-            'slug': Gazette.slug,
+            'slug': slug,
             'url': article_url,
             'published': published_iso,
             'updated': published_iso,

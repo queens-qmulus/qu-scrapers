@@ -3,7 +3,7 @@ import pendulum
 from urllib.parse import urljoin
 
 from ..utils import Scraper
-from .news_helpers import save_article
+from .news_helpers import get_urls_on_depth, get_article_page, save_article
 
 
 class Journal:
@@ -25,7 +25,7 @@ class Journal:
         '''
 
         # QJ divides articles by archive year
-        year_rel_urls = Journal._get_archive_years('news', deep)
+        year_rel_urls = get_urls_on_depth(Journal._get_archive_years(), deep)
 
         # Crawl each archived year
         for year_rel_url in year_rel_urls:
@@ -52,9 +52,8 @@ class Journal:
                         # Scrape each article on a page
                         for article_rel_url in article_rel_urls:
                             try:
-                                article_page, article_url = (
-                                    Journal._get_article_page(article_rel_url)
-                                )
+                                article_page, article_url = get_article_page(
+                                    Journal.host, article_rel_url)
 
                                 article_data = (
                                     Journal._parse_article_data(
@@ -88,16 +87,11 @@ class Journal:
             List[String]
         '''
 
-        host_url = urljoin(Journal.host, relative_url)
+        host_url = urljoin(Journal.host, 'news')
         soup = Scraper.http_request(host_url)
 
         year_urls = soup.find('ul', 'views-summary').find_all('li')
         year_rel_urls = [url.find('a')['href'] for url in year_urls]
-
-        if deep:
-            print('Deep scrape active. Scraping every article\n')
-        else:
-            year_rel_urls = [year_rel_urls[0]]
 
         return year_rel_urls
 
@@ -141,15 +135,6 @@ class Journal:
             )
 
         return article_rel_urls
-
-    @staticmethod
-    def _get_article_page(article_rel_url):
-        article_url = urljoin(Journal.host, article_rel_url)[:-1]
-        article_page = Scraper.http_request(article_url)
-
-        print('Article: {url}'.format(url=article_url))
-
-        return article_page, article_url
 
     @staticmethod
     def _parse_article_data(article_page, article_url):
