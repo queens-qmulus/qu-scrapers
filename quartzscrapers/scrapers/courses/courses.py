@@ -3,17 +3,22 @@ import socket
 import pendulum
 import chromedriver_binary # Adds chromedriver_binary to path
 
+from urllib.parse import urljoin
+from collections import OrderedDict
+
 from pymongo import MongoClient
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
-from urllib.parse import urljoin
-from collections import OrderedDict
-
 from ..utils import Scraper
 from ..utils.config import QUEENS_USERNAME, QUEENS_PASSWORD
-from .courses_helpers import noop
+from .courses_helpers import (
+    save_department_data,
+    save_course_data,
+    save_section_data,
+)
+
 
 class Courses:
     '''
@@ -24,12 +29,12 @@ class Courses:
     LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
     headers = {
-        'Pragma': 'no-cache',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Encoding': 'gzip, deflate, sdch, br',
         'Accept-Language': 'en-US,en;q=0.8',
+        'Pragma': 'no-cache',
         'Upgrade-Insecure-Requests': '1',
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Referer': 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/SA/c/SA_LEARNER_SERVICES.CLASS_SEARCH.GBL?Page=SSR_CLSRCH_ENTRY&Action=U',
         'Connection': 'keep-alive',
         'Cache-Control': 'no-cache',
@@ -45,9 +50,8 @@ class Courses:
         'ICNAVTYPEDROPDOWN': '1'
         }
 
-
     @staticmethod
-    def scrape():
+    def scrape(location='./dumps/courses'):
         '''Update database records for courses scraper'''
 
         params = {}
@@ -65,8 +69,8 @@ class Courses:
         params.update(Courses.AJAX_PARAMS)
 
         # Click and expand a certain letter to see departments
-        # E.G: 'A': has AGHE, ANAT... 'B' has BIOL, BCMP..., etc
-        for dept_letter in Courses.LETTERS[12]:
+        # E.G: 'A' has AGHE, ANAT, 'B' has BIOL, BCMP, etc
+        for dept_letter in Courses.LETTERS:
             try:
                 departments = Courses._get_departments(
                     soup, dept_letter, params, cookies
@@ -77,16 +81,8 @@ class Courses:
                 # For each department under a certain letter search
                 for department in departments[1:]:
                     try:
-                        dept_name = department.find(
-                            'span',
-                            id=re.compile('DERIVED_SSS_BCC_GROUP_BOX_1\$147\$\$span\$')
-                            ).text.strip()
-
-                        name_index = dept_name.find('-')
-                        dept_code = dept_name[:name_index].strip()
-
-                        print('\nDepartment: {name}'.format(name=dept_name))
-                        print('==============================================')
+                        dept_data = Courses._parse_department_data(department)
+                        save_department_data(dept_data, location)
 
                         courses = department.find_all('tr', id=re.compile('trCOURSE_LIST'))
 
@@ -116,7 +112,7 @@ class Courses:
                                     title = soup.find('span', id='DERIVED_CRSECAT_DESCR200').text.strip()
                                     print('{}\n--------------------------------'.format(title))
                                     print('Only one course offering here. Parsig course data')
-                                    Courses._navigate_and_parse_course(soup, cookies)
+                                    Courses._navigate_and_parse_course(soup, cookies, location)
                                 else:
                                     title = soup.find('span', id='DERIVED_SSS_SEL_DESCR200').text.strip()
                                     print('{}\n--------------------------------'.format(title))
@@ -134,7 +130,7 @@ class Courses:
                                             ic_action = {'ICAction': career_number}
 
                                             soup = Courses._request_page(ic_action, cookies) # GENERALIZED PAGE
-                                            Courses._navigate_and_parse_course(soup, cookies)
+                                            Courses._navigate_and_parse_course(soup, cookies, location)
 
                                         except Exception as ex:
                                             Scraper.handle_error(ex, 'scrape')
@@ -149,7 +145,7 @@ class Courses:
                             except Exception as ex:
                                 Scraper.handle_error(ex, 'scrape')
 
-                        print('\nDone department {}'.format(dept_name))
+                        print('\nDone department {}'.format(dept_str))
 
                     except Exception as ex:
                         Scraper.handle_error(ex, 'scrape')
@@ -159,16 +155,13 @@ class Courses:
             except Exception as ex:
                 Scraper.handle_error(ex, 'scrape')
 
-            break # temporary
-
-        print('\nCourse scrape complete')
-
+        print('\nCourses scrape complete')
 
     @staticmethod
-    def _navigate_and_parse_course(soup, cookies):
+    def _navigate_and_parse_course(soup, cookies, location):
         # course parse
         course_data = Courses._parse_course_data(soup)
-        Scraper.save_data(course_data, 'courses')
+        save_course_data(course_data, location)
 
         # section(s) parse
         if not Courses._has_course_sections(soup):
@@ -216,7 +209,11 @@ class Courses:
                     section_soup = Courses._request_page(payload, cookies)
                     course_section_base_data, course_section_data = Courses._parse_course_section_data(section_soup, course_data, section_name)
 
-                    Courses._preprocess_and_save_course(course_section_base_data, course_section_data)
+                    save_section_data(
+                        course_section_base_data,
+                        course_section_data,
+                        location
+                    )
 
                     # go back to sections. No need to persist additional payload params
                     ic_action = {'ICAction': 'CLASS_SRCH_WRK2_SSR_PB_CLOSE'}
@@ -227,7 +224,6 @@ class Courses:
         print('Done course. Returning to previous page')
         ic_action = {'ICAction': 'DERIVED_SAA_CRS_RETURN_PB$163$'}
         Courses._request_page(ic_action, cookies)
-
 
     @staticmethod
     def _login():
@@ -278,7 +274,6 @@ class Courses:
 
         return session_cookies
 
-
     @staticmethod
     def _request_page(params, cookies):
         return Scraper.http_request(
@@ -286,7 +281,6 @@ class Courses:
             params=params,
             cookies=cookies
             )
-
 
     @staticmethod
     def _get_hidden_params(soup):
@@ -304,15 +298,13 @@ class Courses:
 
         if not hidden:
             hidden = soup.find(
-                'field', id=re.compile('win\ddivPSHIDDENFIELDS')
-                )
+                'field', id=re.compile('win\ddivPSHIDDENFIELDS'))
 
         params.update({
             x.get('name'): x.get('value') for x in hidden.find_all('input')
-            })
+        })
 
         return params
-
 
     @staticmethod
     def _get_departments(soup, letter, params, cookies):
@@ -322,8 +314,6 @@ class Courses:
 
             # TODO: Should be POST (it isn't)
             soup = Courses._request_page(payload, cookies)
-            Scraper.wait()
-
             return soup
 
         # Get all departments for a certain letter
@@ -340,42 +330,52 @@ class Courses:
 
         return departments
 
-
     @staticmethod
     def _get_sections(soup):
-        return [
-            sec['id'] for sec in soup.find_all(
-                'a', id=re.compile('CLASS_SECTION\$')
-            )]
-
+        return [sec['id'] for sec in soup.find_all(
+            'a', id=re.compile('CLASS_SECTION\$'))]
 
     @staticmethod
     def _has_multiple_course_offerings(soup):
         return soup.find('table', id='CRSE_OFFERINGS$scroll$0')
 
-
     @staticmethod
     def _has_course_sections(soup):
         return soup.find('input', id='DERIVED_SAA_CRS_SSR_PB_GO')
 
-
     @staticmethod
     def _is_view_sections_closed(soup):
         view_all_tab = soup.find('a', id='CLASS_TBL_VW5$hviewall$0')
-
         return view_all_tab and 'View All' in view_all_tab
-
 
     @staticmethod
     def _get_academic_levels(soup):
-        return [
-            anchor for anchor in soup.find_all('a', id=re.compile('CAREER\$'))
-            ]
+        return [url for url in soup.find_all('a', id=re.compile('CAREER\$'))]
 
+    @staticmethod
+    def _parse_department_data(department):
+        REGEX_TITLE = re.compile('DERIVED_SSS_BCC_GROUP_BOX_1\$147\$\$span\$')
+        dept_str = department.find('span', id=REGEX_TITLE).text.strip()
+
+        print('\nDepartment: {name}'.format(name=dept_str))
+        print('=======================================l=======')
+
+        # Some departments have more than one hypen such as
+        # "MEI - Entrepreneur & Innov - Masters". Find first index of '-' to
+        # split code from name.
+        name_index = dept_str.find('-')
+        code = dept_str[:name_index].strip()
+        name = dept_str[name_index + 2:].strip()
+
+        data = {
+            'code': code,
+            'name': name,
+        }
+
+        return data
 
     @staticmethod
     def _parse_course_data(soup):
-
         # All HTML id's used via regular expressions
         REGEX_TITLE = re.compile('DERIVED_CRSECAT_DESCR200')
         REGEX_CAMPUS = re.compile('CAMPUS_TBL_DESCR')
@@ -390,7 +390,6 @@ class Courses:
         REGEX_ENROLL_DIV = re.compile('win0div')
         REGEX_CEAB = re.compile('ACE_DERIVED_CLSRCH')
 
-
         def filter_course_name(soup):
             course_title = soup.find('span', id=REGEX_TITLE).text.strip()
             name_index = course_title.find('-')
@@ -402,7 +401,6 @@ class Courses:
             course_code = course_code_raw.encode('ascii', 'ignore').decode().strip()
 
             return dept, course_code, course_name
-
 
         def filter_description(soup):
             # TODO: Figure out way to filter for  'NOTE', 'LEARNING HOURS', etc
@@ -418,7 +416,6 @@ class Courses:
                 return descr_raw.find_all('br')[0].previous_sibling
 
             return descr_raw.text.encode('ascii', 'ignore').decode().strip()
-
 
         def create_dict(rows, tag, tag_id=None, start=0, enroll=False):
             ENROLLMENT_INFO_MAP = {
@@ -442,7 +439,6 @@ class Courses:
                 data.update({name: desc})
 
             return data
-
 
         def create_ceab_dict(soup):
             CEAB_MAP = {
@@ -469,7 +465,6 @@ class Courses:
                 ceab_data.update({CEAB_MAP[name]: float(units) if units else 0})
 
             return ceab_data
-
 
         department, course_code, course_name = filter_course_name(soup)
 
@@ -501,9 +496,6 @@ class Courses:
         ceab_data = create_ceab_dict(soup)
 
         data = {
-            # NOTE: course_id not shown on generic course page. Must do deep
-            # scrape of course sections for course_id
-            'course_id': None,
             'department': department,
             'course_code': course_code,
             'course_name': course_name,
@@ -524,7 +516,6 @@ class Courses:
         # retain key-value order of dictionary
         return OrderedDict(data)
 
-
     @staticmethod
     def _parse_course_section_data(soup, basic_data, section_name):
         DAY_MAP = {
@@ -544,7 +535,6 @@ class Courses:
         year, term = year_term.split(' ')
         section_number = soup.find('span', id='DERIVED_CLSRCH_DESCR200').text.strip().split(' - ')[1][:3]
         class_number = int(soup.find('span', id='SSR_CLS_DTL_WRK_CLASS_NBR').text.strip())
-        course_id = int(soup.find('span', id='SSR_CLS_DTL_WRK_CRSE_ID').text.strip())
 
         # Note: There are start/end dates for the COURSE, and start/end dates
         # for a section. These two start/end date variables are for the course
@@ -569,8 +559,8 @@ class Courses:
             if 'TBA' in date_times:
                 start_time = end_time = 'TBA'
             else:
-                start_time = pendulum.parse(date_times[1], strict=False).isoformat().split('T')[1]
-                end_time = pendulum.parse(date_times[3], strict=False).isoformat().split('T')[1]
+                start_time = pendulum.parse(date_times[1], strict=False).isoformat().split('T')[1][:5]
+                end_time = pendulum.parse(date_times[3], strict=False).isoformat().split('T')[1][:5]
 
                 for day_short, day_long in DAY_MAP.items():
                     if day_short in day_str:
@@ -578,9 +568,11 @@ class Courses:
 
             location = soup.find('span', id=re.compile('MTG_LOC\$')).text.strip()
 
-            # TODO: Verify format for more than one instructor existing
-            instructor = soup.find('span', id=re.compile('MTG_INSTR\$')).text.strip()
-            instructors = [instructor]
+            # # TODO: Verify format for more than one instructor existing
+            # instructor = soup.find('span', id=re.compile('MTG_INSTR\$')).text.strip()
+            # instructors = [instructor]
+
+            instructors = soup.find('span', id=re.compile('MTG_INSTR\$')).text.strip().split(', \r')
 
             # start/end dates for a partcular SECTION
             meeting_dates = soup.find('span', id=re.compile('MTG_DATE\$')).text.strip().split(' - ')
@@ -642,7 +634,6 @@ class Courses:
             }
 
         course_data = {
-            'course_id': course_id,
             'year': year,
             'term': term,
             'department': basic_data.get('department', ''),
@@ -654,42 +645,3 @@ class Courses:
             }
 
         return OrderedDict(course_data), OrderedDict(section_data)
-
-
-    @staticmethod
-    def _preprocess_and_save_course(course_data, section_data):
-        client = MongoClient('localhost', 27017)
-        db = client['knowledge']
-        collection = 'courses_sections'
-
-        # course is found. Append course section
-        # NOTE: Multiple courses with the same ID can exist. Such as MATH121 for
-        # main campus, bader campus, or online. In order for a course listing to
-        # be unique, these 5 datapoints must be unique AS A BUNDLE:
-        # - Course ID
-        # - campus
-        # - academic_level
-        # - year
-        # - term
-
-        course = db[collection].find_one({
-            'course_id': course_data.get('course_id'),
-            'campus': course_data.get('campus'),
-            'academic_level': course_data.get('academic_level'),
-            'year': course_data.get('year'),
-            'term': course_data.get('term'),
-            })
-
-        if course:
-            db[collection].find_one_and_update(
-                course,
-                {'$push': {'course_sections': section_data}}
-                )
-
-        # course does not yet exist. Add brand new document
-        else:
-            course_data['course_sections'] = [section_data]
-            db[collection].insert(course_data)
-
-        print('Section data saved\n')
-
