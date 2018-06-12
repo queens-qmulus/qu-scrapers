@@ -93,7 +93,7 @@ class Courses:
                                 course_name = course.find('span', id=re.compile('CRSE_TITLE\$')).text
 
                                 if not course_number:
-                                    print('Course number does not exit. Skipping')
+                                    print('Course number does not exist. Skipping')
                                     continue
 
                                 if 'unspecified' in course_name.lower():
@@ -145,7 +145,7 @@ class Courses:
                             except Exception as ex:
                                 Scraper.handle_error(ex, 'scrape')
 
-                        print('\nDone department {}'.format(dept_str))
+                        print('\nDone department')
 
                     except Exception as ex:
                         Scraper.handle_error(ex, 'scrape')
