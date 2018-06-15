@@ -59,10 +59,10 @@ class Courses:
 
         # Imitate an actual login and grab generated cookies, which allows the
         # bypass of SOLUS request redirects.
-        cookies = Courses._login()
+        Courses.cookies = Courses._login()
 
         # TODO: Should be GET (it is)
-        soup = Courses._request_page(params, cookies)
+        soup = Courses._request_page(params)
 
         hidden_params = Courses._get_hidden_params(soup)
         params.update(hidden_params)
@@ -73,8 +73,8 @@ class Courses:
         for dept_letter in Courses.LETTERS:
             try:
                 departments = Courses._get_departments(
-                    soup, dept_letter, params, cookies
-                    )
+                    soup, dept_letter, params
+                )
 
                 print('Got departments. Parsing each department')
 
@@ -103,7 +103,7 @@ class Courses:
                                 # TODO: Should be POST (it isn't)
                                 # Note: Selecting course only takes one parameter, which is the ICAction
                                 ic_action = {'ICAction': course_number}
-                                soup = Courses._request_page(ic_action, cookies) # GENERALIZED PAGE
+                                soup = Courses._request_page(ic_action)
 
                                 # Some courses have multiple offerings of the same course
                                 # E.g: MATH121 offered on campus and online. Check if
@@ -112,7 +112,7 @@ class Courses:
                                     title = soup.find('span', id='DERIVED_CRSECAT_DESCR200').text.strip()
                                     print('{}\n--------------------------------'.format(title))
                                     print('Only one course offering here. Parsig course data')
-                                    Courses._navigate_and_parse_course(soup, cookies, location)
+                                    Courses._navigate_and_parse_course(soup, location)
                                 else:
                                     title = soup.find('span', id='DERIVED_SSS_SEL_DESCR200').text.strip()
                                     print('{}\n--------------------------------'.format(title))
@@ -129,8 +129,8 @@ class Courses:
                                             # go from a certain academic level to basic course page
                                             ic_action = {'ICAction': career_number}
 
-                                            soup = Courses._request_page(ic_action, cookies) # GENERALIZED PAGE
-                                            Courses._navigate_and_parse_course(soup, cookies, location)
+                                            soup = Courses._request_page(ic_action)
+                                            Courses._navigate_and_parse_course(soup, location)
 
                                         except Exception as ex:
                                             Scraper.handle_error(ex, 'scrape')
@@ -138,7 +138,7 @@ class Courses:
                                      # go back to course listing
                                     print('Done careers. Returning to course list')
                                     ic_action = {'ICAction': 'DERIVED_SSS_SEL_RETURN_PB$181$'}
-                                    Courses._request_page(ic_action, cookies)
+                                    Courses._request_page(ic_action)
 
                                     print('BACK AT COURSE SELECTION CATALOGUE')
 
@@ -158,7 +158,7 @@ class Courses:
         print('\nCourses scrape complete')
 
     @staticmethod
-    def _navigate_and_parse_course(soup, cookies, location):
+    def _navigate_and_parse_course(soup, location):
         # course parse
         course_data = Courses._parse_course_data(soup)
         save_course_data(course_data, location)
@@ -169,7 +169,7 @@ class Courses:
         else:
             # go to sections page
             ic_action = {'ICAction': 'DERIVED_SAA_CRS_SSR_PB_GO'}
-            soup = Courses._request_page(ic_action, cookies)
+            soup = Courses._request_page(ic_action)
 
             terms = soup.find('select', id='DERIVED_SAA_CRS_TERM_ALT').find_all('option')
 
@@ -185,7 +185,7 @@ class Courses:
                     'DERIVED_SAA_CRS_TERM_ALT': term_number,
                     }
 
-                soup = Courses._request_page(payload, cookies)
+                soup = Courses._request_page(payload)
 
                 # view all sections
                 # NOTE: PeopleSoft maintains state of 'View All' for sections
@@ -194,7 +194,7 @@ class Courses:
                 if Courses._is_view_sections_closed(soup):
                     print("'View All' tab is minimized. Requesting 'View All' for current term...")
                     payload.update({'ICAction': 'CLASS_TBL_VW5$hviewall$0'})
-                    soup = Courses._request_page(payload, cookies)
+                    soup = Courses._request_page(payload)
 
                 sections = Courses._get_sections(soup)
 
@@ -206,7 +206,7 @@ class Courses:
 
                     # go to sections page.
                     payload.update({'ICAction': section})
-                    section_soup = Courses._request_page(payload, cookies)
+                    section_soup = Courses._request_page(payload)
                     course_section_base_data, course_section_data = Courses._parse_course_section_data(section_soup, course_data, section_name)
 
                     save_section_data(
@@ -217,13 +217,13 @@ class Courses:
 
                     # go back to sections. No need to persist additional payload params
                     ic_action = {'ICAction': 'CLASS_SRCH_WRK2_SSR_PB_CLOSE'}
-                    Courses._request_page(ic_action, cookies)
+                    Courses._request_page(ic_action)
 
                 print('Done term\n')
 
         print('Done course. Returning to previous page')
         ic_action = {'ICAction': 'DERIVED_SAA_CRS_RETURN_PB$163$'}
-        Courses._request_page(ic_action, cookies)
+        Courses._request_page(ic_action)
 
     @staticmethod
     def _login():
@@ -275,12 +275,9 @@ class Courses:
         return session_cookies
 
     @staticmethod
-    def _request_page(params, cookies):
+    def _request_page(params):
         return Scraper.http_request(
-            Courses.host,
-            params=params,
-            cookies=cookies
-            )
+            url=Courses.host, params=params, cookies=Courses.cookies)
 
     @staticmethod
     def _get_hidden_params(soup):
@@ -307,26 +304,26 @@ class Courses:
         return params
 
     @staticmethod
-    def _get_departments(soup, letter, params, cookies):
-        def update_params_and_make_request(soup, payload, cookies, ic_action):
+    def _get_departments(soup, letter, params):
+        def update_params_and_make_request(soup, payload, ic_action):
             payload = Courses._get_hidden_params(soup)
             payload.update(ic_action)
 
             # TODO: Should be POST (it isn't)
-            soup = Courses._request_page(payload, cookies)
+            soup = Courses._request_page(payload)
             return soup
 
         # Get all departments for a certain letter
         ic_action = {'ICAction': 'DERIVED_SSS_BCC_SSR_ALPHANUM_{}'.format(letter)}
-        soup = update_params_and_make_request(soup, params, cookies, ic_action)
+        soup = update_params_and_make_request(soup, params, ic_action)
 
         # Expand all department courses
         ic_action = {'ICAction': 'DERIVED_SSS_BCC_SSS_EXPAND_ALL$97$'}
-        soup = update_params_and_make_request(soup, params, cookies, ic_action)
+        soup = update_params_and_make_request(soup, params, ic_action)
 
         departments = soup.find_all(
             'table', id=re.compile('ACE_DERIVED_SSS_BCC_GROUP_BOX_1')
-            )
+        )
 
         return departments
 
