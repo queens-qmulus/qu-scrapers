@@ -1,5 +1,4 @@
 import re
-import socket
 import pendulum
 import chromedriver_binary # Adds chromedriver_binary to path
 
@@ -79,7 +78,7 @@ class Courses:
                 print('Got departments. Parsing each department')
 
                 # For each department under a certain letter search
-                for department in departments[1:]:
+                for department in departments:
                     try:
                         dept_data = Courses._parse_department_data(department)
                         save_department_data(dept_data, location)
@@ -88,6 +87,8 @@ class Courses:
 
                         # For each course under a certain department
                         for course in courses:
+                            return_state = 'DERIVED_SAA_CRS_RETURN_PB$163$'
+
                             try:
                                 course_number = course.find('a', id=re.compile('CRSE_NBR\$'))['id']
                                 course_name = course.find('span', id=re.compile('CRSE_TITLE\$')).text
@@ -108,12 +109,14 @@ class Courses:
                                 # Some courses have multiple offerings of the same course
                                 # E.g: MATH121 offered on campus and online. Check if
                                 # table representing academic levels exists
-                                if not Courses._has_multiple_course_offerings(soup): # Status: Pending
+                                if not Courses._has_multiple_course_offerings(soup):
                                     title = soup.find('span', id='DERIVED_CRSECAT_DESCR200').text.strip()
                                     print('{}\n--------------------------------'.format(title))
-                                    print('Only one course offering here. Parsig course data')
+                                    print('Only one course offering here. Parsing course data')
+
                                     Courses._navigate_and_parse_course(soup, location)
                                 else:
+                                    return_state = 'DERIVED_SSS_SEL_RETURN_PB$181$'
                                     title = soup.find('span', id='DERIVED_SSS_SEL_DESCR200').text.strip()
                                     print('{}\n--------------------------------'.format(title))
                                     print('** THIS HAS MULITPLE COURSE OFFERINGS **')
@@ -135,15 +138,15 @@ class Courses:
                                         except Exception as ex:
                                             Scraper.handle_error(ex, 'scrape')
 
-                                     # go back to course listing
-                                    print('Done careers. Returning to course list')
-                                    ic_action = {'ICAction': 'DERIVED_SSS_SEL_RETURN_PB$181$'}
-                                    Courses._request_page(ic_action)
-
-                                    print('BACK AT COURSE SELECTION CATALOGUE')
+                                    print('Done careers.')
 
                             except Exception as ex:
                                 Scraper.handle_error(ex, 'scrape')
+
+                            # go back to course listing
+                            print('Returning to course list')
+                            ic_action = {'ICAction': return_state}
+                            Courses._request_page(ic_action)
 
                         print('\nDone department')
 
@@ -159,69 +162,83 @@ class Courses:
 
     @staticmethod
     def _navigate_and_parse_course(soup, location):
-        # course parse
-        course_data = Courses._parse_course_data(soup)
-        save_course_data(course_data, location)
+        try:
+            # course parse
+            course_data = Courses._parse_course_data(soup)
+            save_course_data(course_data, location)
 
-        # section(s) parse
-        if not Courses._has_course_sections(soup):
-            print('No course sections. Skipping deep scrape')
-        else:
-            # go to sections page
-            ic_action = {'ICAction': 'DERIVED_SAA_CRS_SSR_PB_GO'}
-            soup = Courses._request_page(ic_action)
+            # section(s) parse
+            if not Courses._has_course_sections(soup):
+                print('No course sections. Skipping deep scrape')
+            else:
+                # go to sections page
+                ic_action = {'ICAction': 'DERIVED_SAA_CRS_SSR_PB_GO'}
+                soup = Courses._request_page(ic_action)
 
-            terms = soup.find('select', id='DERIVED_SAA_CRS_TERM_ALT').find_all('option')
+                terms = soup.find('select', id='DERIVED_SAA_CRS_TERM_ALT').find_all('option')
 
-            print('{} terms available.\n'.format(len(terms)))
+                print('{} terms available.\n'.format(len(terms)))
 
-            for term in terms:
-                term_number = int(term['value'])
-                print('Starting term: {} ({})'.format(term.text.strip(), term_number))
-                print('--------------------------------')
+                for term in terms:
+                    try:
+                        term_number = int(term['value'])
+                        print('Starting term: {} ({})'.format(term.text.strip(), term_number))
+                        print('--------------------------------')
 
-                payload = {
-                    'ICAction': 'DERIVED_SAA_CRS_SSR_PB_GO$3$',
-                    'DERIVED_SAA_CRS_TERM_ALT': term_number,
-                    }
+                        payload = {
+                            'ICAction': 'DERIVED_SAA_CRS_SSR_PB_GO$3$',
+                            'DERIVED_SAA_CRS_TERM_ALT': term_number,
+                            }
 
-                soup = Courses._request_page(payload)
+                        soup = Courses._request_page(payload)
 
-                # view all sections
-                # NOTE: PeopleSoft maintains state of 'View All' for sections
-                # per every other new section you select. This means it
-                # only needs to be expanded ONCE.
-                if Courses._is_view_sections_closed(soup):
-                    print("'View All' tab is minimized. Requesting 'View All' for current term...")
-                    payload.update({'ICAction': 'CLASS_TBL_VW5$hviewall$0'})
-                    soup = Courses._request_page(payload)
+                        # view all sections
+                        # NOTE: PeopleSoft maintains state of 'View All' for sections
+                        # per every other new section you select. This means it
+                        # only needs to be expanded ONCE.
+                        if Courses._is_view_sections_closed(soup):
+                            print("'View All' tab is minimized. Requesting 'View All' for current term...")
+                            payload.update({'ICAction': 'CLASS_TBL_VW5$hviewall$0'})
+                            soup = Courses._request_page(payload)
+                            print("'View All' request complete.")
 
-                sections = Courses._get_sections(soup)
+                        sections = Courses._get_sections(soup)
 
-                print("'View All' request complete. Total sections: {}\n".format(len(sections)))
+                        print("Total sections: {}\n".format(len(sections)))
 
-                for section in sections:
-                    section_name = soup.find('a', id=section).text.strip().split(' ')[0]
-                    print('Section name: {}'.format(section_name))
+                        for section in sections:
+                            try:
+                                section_name = soup.find('a', id=section).text.strip().split(' ')[0]
+                                print('Section name: {}'.format(section_name))
 
-                    # go to sections page.
-                    payload.update({'ICAction': section})
-                    section_soup = Courses._request_page(payload)
-                    course_section_base_data, course_section_data = Courses._parse_course_section_data(section_soup, course_data, section_name)
+                                # go to sections page.
+                                payload.update({'ICAction': section})
+                                section_soup = Courses._request_page(payload)
+                                course_section_base_data, course_section_data = Courses._parse_course_section_data(section_soup, course_data, section_name)
 
-                    save_section_data(
-                        course_section_base_data,
-                        course_section_data,
-                        location
-                    )
+                                save_section_data(
+                                    course_section_base_data,
+                                    course_section_data,
+                                    location
+                                )
 
-                    # go back to sections. No need to persist additional payload params
-                    ic_action = {'ICAction': 'CLASS_SRCH_WRK2_SSR_PB_CLOSE'}
-                    Courses._request_page(ic_action)
+                            except Exception as ex:
+                                Scraper.handle_error(ex, '_navigate_and_parse_course')
 
-                print('Done term\n')
+                            # go back to sections.
+                            ic_action = {'ICAction': 'CLASS_SRCH_WRK2_SSR_PB_CLOSE'}
+                            Courses._request_page(ic_action)
 
-        print('Done course. Returning to previous page')
+                        print('Done term\n')
+
+                    except Exception as ex:
+                        Scraper.handle_error(ex, '_navigate_and_parse_course')
+
+            print('Done course. Returning to previous page')
+
+        except Exception as ex:
+            Scraper.handle_error(ex, '_navigate_and_parse_course')
+
         ic_action = {'ICAction': 'DERIVED_SAA_CRS_RETURN_PB$163$'}
         Courses._request_page(ic_action)
 
@@ -240,7 +257,6 @@ class Courses:
 
         chrome_options = Options()
         chrome_options.add_argument('--headless')
-        # socket.setdefaulttimeout(60) # timeout for current socket in use
 
         driver = webdriver.Chrome()
         driver.set_page_load_timeout(30000) # temporary
@@ -355,7 +371,7 @@ class Courses:
         dept_str = department.find('span', id=REGEX_TITLE).text.strip()
 
         print('\nDepartment: {name}'.format(name=dept_str))
-        print('=======================================l=======')
+        print('==============================================')
 
         # Some departments have more than one hypen such as
         # "MEI - Entrepreneur & Innov - Masters". Find first index of '-' to
@@ -400,7 +416,7 @@ class Courses:
             return dept, course_code, course_name
 
         def filter_description(soup):
-            # TODO: Figure out way to filter for  'NOTE', 'LEARNING HOURS', etc
+            # TODO: Figure out way to filter for 'NOTE', 'LEARNING HOURS', etc
             # text sections from description
             descr_raw = soup.find('span', id=REGEX_DESC)
 
@@ -564,11 +580,6 @@ class Courses:
                         days.append(day_long)
 
             location = soup.find('span', id=re.compile('MTG_LOC\$')).text.strip()
-
-            # # TODO: Verify format for more than one instructor existing
-            # instructor = soup.find('span', id=re.compile('MTG_INSTR\$')).text.strip()
-            # instructors = [instructor]
-
             instructors = soup.find('span', id=re.compile('MTG_INSTR\$')).text.strip().split(', \r')
 
             # start/end dates for a partcular SECTION
