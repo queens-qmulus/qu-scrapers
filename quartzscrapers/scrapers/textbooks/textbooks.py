@@ -1,5 +1,4 @@
 import re
-from pymongo import MongoClient
 from urllib.parse import urljoin
 from collections import OrderedDict
 

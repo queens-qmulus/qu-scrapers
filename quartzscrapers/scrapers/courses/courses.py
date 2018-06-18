@@ -20,60 +20,29 @@ from .courses_helpers import (
 
 
 class Courses:
-    '''
-    A scraper for Queen's courses.
-    '''
+    '''A scraper for Queen's courses'''
 
     host = 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/SA/c/SA_LEARNER_SERVICES.SSS_BROWSE_CATLG_P.GBL'
     LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
-    headers = {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, sdch, br',
-        'Accept-Language': 'en-US,en;q=0.8',
-        'Pragma': 'no-cache',
-        'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36',
-        'Referer': 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/SA/c/SA_LEARNER_SERVICES.CLASS_SEARCH.GBL?Page=SSR_CLSRCH_ENTRY&Action=U',
-        'Connection': 'keep-alive',
-        'Cache-Control': 'no-cache',
-        }
-
-    START_PARAMS = {
-        'Page': 'SSS_BROWSE_CATLG',
-        'Action': 'U',
-        }
-
-    AJAX_PARAMS = {
-        'ICAJAX': '1',
-        'ICNAVTYPEDROPDOWN': '1'
-        }
-
     @staticmethod
     def scrape(location='./dumps/courses'):
         '''Update database records for courses scraper'''
-
-        params = {}
-        params.update(Courses.START_PARAMS)
 
         # Imitate an actual login and grab generated cookies, which allows the
         # bypass of SOLUS request redirects.
         Courses.cookies = Courses._login()
 
         # TODO: Should be GET (it is)
-        soup = Courses._request_page(params)
-
-        hidden_params = Courses._get_hidden_params(soup)
-        params.update(hidden_params)
-        params.update(Courses.AJAX_PARAMS)
+        soup = Courses._request_page()
 
         # Click and expand a certain letter to see departments
         # E.G: 'A' has AGHE, ANAT, 'B' has BIOL, BCMP, etc
         for dept_letter in Courses.LETTERS:
+            print('Starting letter {}\n'.format(dept_letter))
+
             try:
-                departments = Courses._get_departments(
-                    soup, dept_letter, params
-                )
+                departments = Courses._get_departments(soup, dept_letter)
 
                 print('Got departments. Parsing each department')
 
@@ -144,7 +113,7 @@ class Courses:
                                 Scraper.handle_error(ex, 'scrape')
 
                             # go back to course listing
-                            print('Returning to course list')
+                            print('Returning to course list\n')
                             ic_action = {'ICAction': return_state}
                             Courses._request_page(ic_action)
 
@@ -234,7 +203,7 @@ class Courses:
                     except Exception as ex:
                         Scraper.handle_error(ex, '_navigate_and_parse_course')
 
-            print('Done course. Returning to previous page')
+                print('Done course')
 
         except Exception as ex:
             Scraper.handle_error(ex, '_navigate_and_parse_course')
@@ -291,7 +260,7 @@ class Courses:
         return session_cookies
 
     @staticmethod
-    def _request_page(params):
+    def _request_page(params=None):
         return Scraper.http_request(
             url=Courses.host, params=params, cookies=Courses.cookies)
 
@@ -320,8 +289,8 @@ class Courses:
         return params
 
     @staticmethod
-    def _get_departments(soup, letter, params):
-        def update_params_and_make_request(soup, payload, ic_action):
+    def _get_departments(soup, letter):
+        def update_params_and_make_request(soup, ic_action):
             payload = Courses._get_hidden_params(soup)
             payload.update(ic_action)
 
@@ -331,11 +300,11 @@ class Courses:
 
         # Get all departments for a certain letter
         ic_action = {'ICAction': 'DERIVED_SSS_BCC_SSR_ALPHANUM_{}'.format(letter)}
-        soup = update_params_and_make_request(soup, params, ic_action)
+        soup = update_params_and_make_request(soup, ic_action)
 
         # Expand all department courses
         ic_action = {'ICAction': 'DERIVED_SSS_BCC_SSS_EXPAND_ALL$97$'}
-        soup = update_params_and_make_request(soup, params, ic_action)
+        soup = update_params_and_make_request(soup, ic_action)
 
         departments = soup.find_all(
             'table', id=re.compile('ACE_DERIVED_SSS_BCC_GROUP_BOX_1')

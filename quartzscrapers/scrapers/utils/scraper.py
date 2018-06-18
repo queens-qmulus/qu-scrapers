@@ -6,7 +6,6 @@ import requests
 
 from retrying import retry
 from bs4 import BeautifulSoup
-from pymongo import MongoClient
 
 
 class Scraper:
@@ -47,7 +46,7 @@ class Scraper:
             cookies=cookies,
             headers=headers or Scraper.headers,
             timeout=timeout,
-            )
+        )
 
         # parse the response via BeautifulSoup after detecting its markup
         if parse:
