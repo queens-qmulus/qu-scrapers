@@ -3,7 +3,7 @@ def save_department_data(department_data, scraper, location):
     filepath = '{}/departments'.format(location)
 
     scraper.write_data(department_data, filename, filepath)
-    print('Department data saved\n')
+    scraper.logger.debug('Department data saved')
 
 def save_course_data(course_data, scraper, location):
     dept, code = course_data['department'], course_data['course_code']
@@ -11,7 +11,7 @@ def save_course_data(course_data, scraper, location):
     filepath = '{}/courses'.format(location)
 
     scraper.write_data(course_data, filename, filepath)
-    print('Course data saved\n')
+    scraper.logger.debug('Course data saved')
 
 def save_section_data(course_data, section_data, scraper, location):
     """Preprocess and save course section data to JSON.
@@ -51,5 +51,4 @@ def save_section_data(course_data, section_data, scraper, location):
     )
 
     scraper.update_data(course_data, section_data, key, filename, filepath)
-
-    print('Section data saved\n')
+    scraper.logger.debug('Section data saved')

@@ -13,6 +13,7 @@ class SmithMagazine:
     host = 'https://smith.queensu.ca'
     slug = 'smithmagazine'
     scraper = Scraper()
+    logger = scraper.logger
 
     @staticmethod
     def scrape(deep=False, location='./dumps/news'):
@@ -20,13 +21,17 @@ class SmithMagazine:
         Parse information custom to Smith Magazine.
         '''
 
+        SmithMagazine.logger.info('Starting SmithMagazine scrape')
+
         try:
             magazine_issue_rel_urls = get_urls_on_depth(
-                SmithMagazine._get_magazine_issues(), deep)
-
+                SmithMagazine._get_magazine_issues(),
+                SmithMagazine.logger,
+                deep
+            )
 
             for magazine_issue_rel_url in magazine_issue_rel_urls:
-                print('ARCHIVE: {url}\n'.format(url=magazine_issue_rel_url))
+                SmithMagazine.logger.debug('ARCHIVE: {url}'.format(url=magazine_issue_rel_url))
 
                 try:
                     article_sections = SmithMagazine._get_article_sections(
@@ -35,8 +40,7 @@ class SmithMagazine:
                     for article_section in article_sections:
                         title = article_section.find('h2', 'block-title').text.strip()
 
-                        print('Article Section: {section}'.format(section=title))
-                        print('--------------------------------')
+                        SmithMagazine.logger.debug('Article Section: {section}'.format(section=title))
 
                         article_rel_urls = SmithMagazine._get_article_rel_urls(
                             article_section)
@@ -46,6 +50,7 @@ class SmithMagazine:
                                 article_page, article_url = get_article_page(
                                     SmithMagazine.scraper,
                                     SmithMagazine.host,
+                                    SmithMagazine.logger,
                                     article_rel_url
                                 )
 
@@ -69,6 +74,8 @@ class SmithMagazine:
 
         except Exception as ex:
             SmithMagazine.scraper.handle_error(ex, 'scrape')
+
+        SmithMagazine.logger.info('Completed SmithMagazine scrape')
 
     @staticmethod
     def _get_magazine_issues():

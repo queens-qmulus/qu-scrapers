@@ -86,5 +86,3 @@ def save_textbook_data(course_list, textbook_list, scraper, location):
 
             scraper.update_data(
                 textbook_data, course_data, 'courses', filename, location)
-
-    print('Textbook data saved\n')

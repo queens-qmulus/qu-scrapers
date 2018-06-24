@@ -29,10 +29,13 @@ class Courses:
     '''
 
     LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    logger = Scraper().logger
 
     @staticmethod
     def scrape():
         '''Update database records for courses scraper'''
+
+        Courses.logger.info('Starting Courses scrape')
 
         queue = Queue()
 
@@ -46,7 +49,7 @@ class Courses:
 
         queue.join()
 
-        print('Courses scrape complete')
+        Courses.logger.info('Completed Courses scrape')
 
 class CourseWorker(Thread):
     lock = Lock()
@@ -68,15 +71,16 @@ class CourseSession:
     host = 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/SA/c/SA_LEARNER_SERVICES.SSS_BROWSE_CATLG_P.GBL'
 
     def __init__(self, location='./dumps/courses'):
-        self.cookies = self._login()
-        self.location = location
         self.scraper = Scraper()
+        self.location = location
+        self.logger = self.scraper.logger
+        self.cookies = self._login()
 
     def scrape(self, letter):
         soup = self._request_page()
         departments = self._get_departments(soup, letter)
 
-        print('Letter {} has {} depts.'.format(letter, len(departments)))
+        self.logger.debug('Letter {} has {} depts.'.format(letter, len(departments)))
 
         # For each department under a certain letter search
         for department in departments:
@@ -95,11 +99,11 @@ class CourseSession:
                         course_name = course.find('span', id=re.compile('CRSE_TITLE\$')).text
 
                         if not course_number:
-                            print('Course number does not exist. Skipping')
+                            self.logger.debug('Course number does not exist. Skipping')
                             continue
 
                         if 'unspecified' in course_name.lower():
-                            print('Skipping unspecified course')
+                            self.logger.debug('Skipping unspecified course')
                             continue
 
                         # Note: Selecting course only takes one parameter, which is the ICAction
@@ -111,15 +115,15 @@ class CourseSession:
                         # table representing academic levels exists
                         if not self._has_multiple_course_offerings(soup):
                             title = soup.find('span', id='DERIVED_CRSECAT_DESCR200').text.strip()
-                            print('{}\n--------------------------------'.format(title))
-                            print('Only one course offering here. Parsing course data')
+                            self.logger.debug('Course title: {}'.format(title))
+                            self.logger.debug('Only one course offering here. Parsing course data')
 
                             self._navigate_and_parse_course(soup)
                         else:
                             return_state = 'DERIVED_SSS_SEL_RETURN_PB$181$'
                             title = soup.find('span', id='DERIVED_SSS_SEL_DESCR200').text.strip()
-                            print('{}\n--------------------------------'.format(title))
-                            print('** THIS HAS MULITPLE COURSE OFFERINGS **')
+                            self.logger.debug('Course title: {}'.format(title))
+                            self.logger.debug('** THIS HAS MULITPLE COURSE OFFERINGS **')
 
                             academic_levels = self._get_academic_levels(soup)
 
@@ -127,7 +131,7 @@ class CourseSession:
                                 try:
                                     career_number = academic_level['id']
                                     career_name = academic_level.text.strip()
-                                    print('Getting career: {}'.format(career_name))
+                                    self.logger.debug('Getting career: {}'.format(career_name))
 
                                     # go from a certain academic level to basic course page
                                     ic_action = {'ICAction': career_number}
@@ -138,22 +142,22 @@ class CourseSession:
                                 except Exception as ex:
                                     self.scraper.handle_error(ex, 'scrape_inner')
 
-                            print('Done careers.')
+                            self.logger.debug('Done careers.')
 
                     except Exception as ex:
                         self.scraper.handle_error(ex, 'scrape_middle')
 
                     # go back to course listing
-                    print('Returning to course list\n')
+                    self.logger.debug('Returning to course list')
                     ic_action = {'ICAction': return_state}
                     self._request_page(ic_action)
 
-                print('\nDone department')
+                self.logger.debug('Done department')
 
             except Exception as ex:
                 self.scraper.handle_error(ex, 'scrape_outer')
 
-        print('\nDone letter {}'.format(letter))
+        self.logger.debug('Done letter {}'.format(letter))
 
     def _navigate_and_parse_course(self, soup):
         try:
@@ -163,7 +167,7 @@ class CourseSession:
 
             # section(s) parse
             if not self._has_course_sections(soup):
-                print('No course sections. Skipping deep scrape')
+                self.logger.debug('No course sections. Skipping deep scrape')
             else:
                 # go to sections page
                 ic_action = {'ICAction': 'DERIVED_SAA_CRS_SSR_PB_GO'}
@@ -171,13 +175,12 @@ class CourseSession:
 
                 terms = soup.find('select', id='DERIVED_SAA_CRS_TERM_ALT').find_all('option')
 
-                print('{} terms available.\n'.format(len(terms)))
+                self.logger.debug('{} terms available.'.format(len(terms)))
 
                 for term in terms:
                     try:
                         term_number = int(term['value'])
-                        print('Starting term: {} ({})'.format(term.text.strip(), term_number))
-                        print('--------------------------------')
+                        self.logger.debug('Starting term: {} ({})'.format(term.text.strip(), term_number))
 
                         payload = {
                             'ICAction': 'DERIVED_SAA_CRS_SSR_PB_GO$3$',
@@ -191,19 +194,19 @@ class CourseSession:
                         # per every other new section you select. This means it
                         # only needs to be expanded ONCE.
                         if self._is_view_sections_closed(soup):
-                            print("'View All' tab is minimized. Requesting 'View All' for current term...")
+                            self.logger.debug("'View All' tab is minimized. Requesting 'View All' for current term...")
                             payload.update({'ICAction': 'CLASS_TBL_VW5$hviewall$0'})
                             soup = self._request_page(payload)
-                            print("'View All' request complete.")
+                            self.logger.debug("'View All' request complete.")
 
                         sections = self._get_sections(soup)
 
-                        print("Total sections: {}\n".format(len(sections)))
+                        self.logger.debug('Total sections: {}'.format(len(sections)))
 
                         for section in sections:
                             try:
                                 section_name = soup.find('a', id=section).text.strip().split(' ')[0]
-                                print('Section name: {}'.format(section_name))
+                                self.logger.debug('Section name: {}'.format(section_name))
 
                                 # go to sections page.
                                 payload.update({'ICAction': section})
@@ -224,12 +227,12 @@ class CourseSession:
                             ic_action = {'ICAction': 'CLASS_SRCH_WRK2_SSR_PB_CLOSE'}
                             self._request_page(ic_action)
 
-                        print('Done term\n')
+                        self.logger.debug('Done term')
 
                     except Exception as ex:
                         self.scraper.handle_error(ex, '_navigate_and_parse_course_middle')
 
-                print('Done course')
+                self.logger.debug('Done course')
 
         except Exception as ex:
             self.scraper.handle_error(ex, '_navigate_and_parse_course_outer')
@@ -252,8 +255,10 @@ class CourseSession:
                 try:
                     return func()
                 except Exception as ex:
-                    print('Selenium error: {}\nRetrying...'.format(ex))
+                    self.logger.error('Selenium error: {}\nRetrying...'.format(ex))
                     continue
+
+        self.logger.info('Running webdriver for authentication...')
 
         chrome_options = Options()
 
@@ -297,6 +302,8 @@ class CourseSession:
             session_cookies[cookie['name']] = cookie['value']
 
         driver.close()
+
+        self.logger.info('Webdriver authentication complete')
 
         return session_cookies
 
@@ -379,8 +386,7 @@ class CourseSession:
         REGEX_TITLE = re.compile('DERIVED_SSS_BCC_GROUP_BOX_1\$147\$\$span\$')
         dept_str = department.find('span', id=REGEX_TITLE).text.strip()
 
-        print('\nDepartment: {name}'.format(name=dept_str))
-        print('==============================================')
+        self.logger.debug('Department: {name}'.format(name=dept_str))
 
         # Some departments have more than one hypen such as
         # "MEI - Entrepreneur & Innov - Masters". Find first index of '-' to

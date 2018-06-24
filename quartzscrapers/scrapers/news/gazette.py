@@ -14,6 +14,7 @@ class Gazette:
     host = 'http://www.queensu.ca'
     slug = 'gazette'
     scraper = Scraper()
+    logger = scraper.logger
 
     @staticmethod
     def scrape(
@@ -24,14 +25,13 @@ class Gazette:
     ):
         '''Parse information custom to Queen's Gazette'''
 
-        num_pages = Gazette._get_num_pages(relative_url, deep)
+        Gazette.logger.info('Starting Gazette scrape')
 
-        print('Total Pages: {num_pages}'.format(num_pages=num_pages))
-        print('===================================\n')
+        num_pages = Gazette._get_num_pages(relative_url, deep)
+        Gazette.logger.debug('Total Pages: {num_pages}'.format(num_pages=num_pages))
 
         for page_index in range(num_pages):
-            print('Page {page_num}'.format(page_num=(page_index + 1)))
-            print('---------')
+            Gazette.logger.debug('Page {page_num}'.format(page_num=(page_index + 1)))
 
             try:
                 article_rel_urls, article_issue_dates = (
@@ -41,7 +41,11 @@ class Gazette:
                 for article_rel_url, issue_date in zip(article_rel_urls, article_issue_dates):
                     try:
                         article_page, article_url = get_article_page(
-                            Gazette.scraper, Gazette.host, article_rel_url)
+                            Gazette.scraper,
+                            Gazette.host,
+                            Gazette.logger,
+                            article_rel_url
+                        )
 
                         article_data = Gazette._parse_article_data(
                             article_page, article_url, issue_date, slug)
@@ -58,6 +62,8 @@ class Gazette:
             except Exception as ex:
                 Gazette.scraper.handle_error(ex, 'scrape')
 
+        Gazette.logger.info('Completed Gazette scrape')
+
     @staticmethod
     def _get_num_pages(relative_url, deep):
         '''
@@ -71,7 +77,7 @@ class Gazette:
         params = {}
 
         if deep:
-            print('Deep scrape active. Scraping every article\n')
+            Gazette.logger.info('Deep scrape active. Scraping every article')
         else:
             year = pendulum.now().format('YYYY')
             params.update({
@@ -124,7 +130,7 @@ class Gazette:
         article_url = urljoin(Gazette.host, article_rel_url)
         article_page = Gazette.scraper.http_request(article_url)
 
-        print('Article: {url}'.format(url=article_url))
+        Gazette.logger.debug('Article: {url}'.format(url=article_url))
 
         return article_page, article_url
 
@@ -154,7 +160,7 @@ class Gazette:
         # Queen's gazette doesn't list authors, they either show an author
         # or show a team of authors under a team name. Anomalies include
         # showing two authors using 'with', such as 'By John with Alex'.
-        # Gazette also includes author title such as "Alex, Communications".
+        # Gazette also includes author title such as 'Alex, Communications'.
         # Remove job title, and split by ' with ' to create authors array
         authors_raw = (
             article_page.find('div', 'story-byline').text.strip()[3:].split(',')[0]

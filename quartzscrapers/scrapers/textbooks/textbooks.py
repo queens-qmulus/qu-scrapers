@@ -20,18 +20,20 @@ class Textbooks:
 
     host = 'https://www.campusbookstore.com'
     scraper = Scraper()
+    logger = scraper.logger
 
     @staticmethod
     def scrape(location='./dumps/textbooks'):
         '''Update database records for textbooks scraper'''
+
+        Textbooks.logger.info('Starting Textbooks scrape')
 
         # course department codes, such as CISC, ANAT, PHAR, etc..
         departments = Textbooks._get_departments('textbooks/search-engine')
 
         for department in departments:
             try:
-                print('Course Department: {dep}'.format(dep=department))
-                print('========================\n')
+                Textbooks.logger.debug('Course Department: {dep}'.format(dep=department))
 
                 course_rel_urls = Textbooks._get_course_rel_urls(
                     'textbooks/search-engine/results', department
@@ -47,7 +49,9 @@ class Textbooks:
                         course_data = Textbooks._parse_course_data(
                             course_page, course_url)
 
-                        if course_data:
+                        if not course_data:
+                            Textbooks.logger.debug('** No course data available')
+                        else:
                             cd = course_data[0]
                             term = ''
 
@@ -56,23 +60,20 @@ class Textbooks:
                             else:
                                 term = 'Multiple terms'
 
-                            print('Course: {dep}{code} ({term} {year})'.format(
+                            Textbooks.logger.debug('Course: {dep}{code} ({term} {year})'.format(
                                 dep=cd['department'],
                                 code=cd['course_code'],
                                 term=term,
                                 year=cd['year']
                             ))
-                        else:
-                            print('** No course data available')
 
-                        print('--------------------------')
-                        print('Course Link: {}\n'.format(course_url))
+                        Textbooks.logger.debug('Course Link: {}'.format(course_url))
 
                         textbooks = course_page.find_all(
                             'div', 'textbookHolder'
                         )
 
-                        print('{} textbook(s) found\n'.format(len(textbooks)))
+                        Textbooks.logger.debug('{} textbook(s) found'.format(len(textbooks)))
 
                         for textbook in textbooks:
                             try:
@@ -95,6 +96,7 @@ class Textbooks:
                                 location
                             )
 
+                        Textbooks.logger.debug('Textbook data saved')
                         Textbooks.scraper.wait()
 
                     except Exception as ex:
@@ -102,6 +104,8 @@ class Textbooks:
 
             except Exception as ex:
                 Textbooks.scraper.handle_error(ex, 'scrape')
+
+        Textbooks.logger.info('Completed Textbooks scrape')
 
     @staticmethod
     def _get_departments(relative_url):
@@ -148,7 +152,7 @@ class Textbooks:
         courses_all = soup.find_all('h3')
         courses = [c for c in courses_all if re.search(regex, c.text)]
 
-        print('{n} course(s) found\n'.format(n=len(courses)))
+        Textbooks.logger.debug('{n} course(s) found'.format(n=len(courses)))
 
         for course in courses:
             try:
@@ -300,7 +304,7 @@ class Textbooks:
         isbn_13 = textbook.find('dt', text=re.compile('ISBN')
             ).next_sibling.next_sibling.text.strip()
 
-        print('Textbook ISBN: {isbn}'.format(isbn=isbn_13))
+        Textbooks.logger.debug('Textbook ISBN: {isbn}'.format(isbn=isbn_13))
 
         # may need both new and old prices, or just new prices (or none)
         prices = textbook.find_all('dd', 'textbookPrice')

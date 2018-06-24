@@ -14,6 +14,7 @@ class Journal:
     host = 'http://www.queensjournal.ca'
     slug = 'queensjournal'
     scraper = Scraper()
+    logger = scraper.logger
 
     @staticmethod
     def scrape(deep=False, location='./dumps/news'):
@@ -25,25 +26,26 @@ class Journal:
             location: Defines where to save JSON file
         '''
 
+        Journal.logger.info('Starting Journal scrape')
+
         # QJ divides articles by archive year
-        year_rel_urls = get_urls_on_depth(Journal._get_archive_years(), deep)
+        year_rel_urls = get_urls_on_depth(
+            Journal._get_archive_years(), Journal.logger, deep)
 
         # Crawl each archived year
         for year_rel_url in year_rel_urls:
-            print('ARCHIVE: {url}'.format(url=year_rel_url))
+            Journal.logger.debug('ARCHIVE: {url}'.format(url=year_rel_url))
 
             try:
                 # get number of pages a particular archive year needs to crawl
                 # along with soup reference to continue page crawl
                 num_pages = Journal._get_num_pages(year_rel_url)
 
-                print('Total Pages: {num_pages}'.format(num_pages=num_pages))
-                print('===================================\n')
+                Journal.logger.debug('Total Pages: {num_pages}'.format(num_pages=num_pages))
 
                 # Crawl each page for each year
                 for page_index in range(num_pages):
-                    print('Page {page_num}'.format(page_num=(page_index + 1)))
-                    print('---------')
+                    Journal.logger.debug('Page {page_num}'.format(page_num=(page_index + 1)))
 
                     try:
                         article_rel_urls = Journal._get_article_rel_urls(
@@ -56,6 +58,7 @@ class Journal:
                                 article_page, article_url = get_article_page(
                                     Journal.scraper,
                                     Journal.host,
+                                    Journal.logger,
                                     article_rel_url,
                                 )
 
@@ -82,6 +85,7 @@ class Journal:
             except Exception as ex:
                 Journal.scraper.handle_error(ex, 'scrape')
 
+        Journal.logger.info('Completed Journal scrape')
 
     @staticmethod
     def _get_archive_years():

@@ -2,18 +2,18 @@ import re
 from urllib.parse import urljoin
 
 
-def get_urls_on_depth(urls, deep=False):
+def get_urls_on_depth(urls, logger, deep=False):
     if deep:
-        print('Deep scrape active. Scraping every article\n')
+        logger.info('Deep scrape active. Scraping every article')
         return urls
     else:
         return [urls[0]]
 
-def get_article_page(scraper, host_url, article_rel_url):
+def get_article_page(scraper, host_url, logger, article_rel_url):
     article_url = urljoin(host_url, article_rel_url)
     article_page = scraper.http_request(article_url)
 
-    print('Article: {url}'.format(url=article_url))
+    logger.debug('Article: {url}'.format(url=article_url))
 
     return article_page, article_url
 
@@ -27,4 +27,3 @@ def save_article(scraper, article_data, location):
     article_filename = '{date}_{title}'.format(date=date, title=title)
 
     scraper.write_data(article_data, article_filename, location)
-    print('Article data saved\n')

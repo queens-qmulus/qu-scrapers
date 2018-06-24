@@ -15,12 +15,13 @@ class Buildings:
 
     host = 'http://www.queensu.ca'
     scraper = Scraper()
+    logger = scraper.logger
 
     @staticmethod
     def scrape(location='./dumps/buildings'):
         '''Update database records for buildings scraper'''
 
-        print("Starting buildings scrape")
+        Buildings.logger.info('Starting Buildings scrape')
 
         campuses = Buildings._get_campuses('campusmap/overall')
 
@@ -34,7 +35,7 @@ class Buildings:
                     building_href = building['href']
                     building_param = building_href.split('=')[1]
 
-                    print('Building Parameter: {}'.format(building_param))
+                    Buildings.logger.debug('Building Parameter: {}'.format(building_param))
 
                     soup = Buildings.scraper.http_request(
                         campus_url, params={'mapquery': building_param}
@@ -51,6 +52,8 @@ class Buildings:
                     Buildings.scraper.handle_error(ex, 'scrape')
 
                 Buildings.scraper.wait()
+
+        Buildings.logger.info('Completed Buildings scrape')
 
     @staticmethod
     def _get_campuses(relative_url):
@@ -84,8 +87,7 @@ class Buildings:
         # which splits by '/' and grab the last value
         campus_name = campus_url.split('/')[-1]
 
-        print('Campus: {campus}'.format(campus=campus_name.upper()))
-        print('========================\n')
+        Buildings.logger.debug('Campus: {campus}'.format(campus=campus_name.upper()))
 
         campus_url = urljoin(Buildings.host, campus_url)
         soup = Buildings.scraper.http_request(campus_url)

@@ -20,6 +20,8 @@ class News:
     Juris Diction:          http://www.juris-diction.ca
     '''
 
+    logger = Scraper().logger
+
     news_sources = [
         Journal,
         Gazette,
@@ -32,12 +34,9 @@ class News:
     def scrape(deep=False):
         '''Update database records for news scraper'''
 
-        for news_source in News.news_sources:
-            print('Starting {} scraper'.format(news_source.slug))
-            print('==================================\n')
+        News.logger.info('Starting News scrape')
 
+        for news_source in News.news_sources:
             news_source.scrape(deep=deep)
 
-            print('\nDone {} scraper\n'.format(news_source.slug))
-
-        print('Done all news scrapers')
+        News.logger.info('Completed News scrape')

@@ -13,6 +13,7 @@ class JurisDiction:
     host = 'http://www.juris-diction.ca'
     slug = 'jurisdiction'
     scraper = Scraper()
+    logger = scraper.logger
 
     @staticmethod
     def scrape(deep=False, location='./dumps/news'):
@@ -20,13 +21,18 @@ class JurisDiction:
         Parse information custom to Juris Diction.
         '''
 
+        JurisDiction.logger.info('Starting JurisDiction scrape')
+
         try:
             archive_month_urls = get_urls_on_depth(
-                JurisDiction._get_archive_month_urls(), deep)
+                JurisDiction._get_archive_month_urls(),
+                JurisDiction.logger,
+                deep
+            )
 
             for archive_month_url in archive_month_urls:
                 try:
-                    print('ARCHIVE: {url}\n'.format(url=archive_month_url))
+                    JurisDiction.logger.debug('ARCHIVE: {url}'.format(url=archive_month_url))
 
                     archive_page_urls = JurisDiction._get_archive_page_urls(
                         archive_month_url)
@@ -37,8 +43,7 @@ class JurisDiction:
                         try:
                             archive_page = JurisDiction.scraper.http_request(archive_page_url)
 
-                            print('Page {page_num}'.format(page_num=page_num))
-                            print('-------')
+                            JurisDiction.logger.debug('Page {page_num}'.format(page_num=page_num))
 
                             article_rel_urls = JurisDiction._get_rel_article_urls(
                                 archive_page)
@@ -48,6 +53,7 @@ class JurisDiction:
                                     article_page, article_url = get_article_page(
                                         JurisDiction.scraper,
                                         JurisDiction.host,
+                                        JurisDiction.logger,
                                         article_rel_url
                                     )
 
@@ -79,6 +85,8 @@ class JurisDiction:
 
         except Exception as ex:
             JurisDiction.scraper.handle_error(ex, 'scrape')
+
+        JurisDiction.logger.info('Completed JurisDiction scrape')
 
     @staticmethod
     def _get_archive_month_urls():
