@@ -251,7 +251,7 @@ class CourseSession:
             while True:
                 try:
                     return func()
-                except ex as Exception:
+                except Exception as ex:
                     print('Selenium error: {}\nRetrying...'.format(ex))
                     continue
 
