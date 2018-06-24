@@ -42,10 +42,10 @@ class Courses:
             course_worker.start()
 
         for letter in Courses.LETTERS:
-            print('Queueing letter {}'.format(letter))
             queue.put(letter)
 
         queue.join()
+
         print('Courses scrape complete')
 
 class CourseWorker(Thread):
@@ -58,7 +58,7 @@ class CourseWorker(Thread):
     def run(self):
         while True:
             letter = self.queue.get()
-            course_scraper = CourseSession(letter)
+            course_scraper = CourseSession()
             course_scraper.scrape(letter)
             self.queue.task_done()
 
@@ -67,8 +67,8 @@ class CourseSession:
 
     host = 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/SA/c/SA_LEARNER_SERVICES.SSS_BROWSE_CATLG_P.GBL'
 
-    def __init__(self, letter, location='./dumps/courses'):
-        self.cookies = self._login(letter)
+    def __init__(self, location='./dumps/courses'):
+        self.cookies = self._login()
         self.location = location
         self.scraper = Scraper()
 
@@ -237,7 +237,7 @@ class CourseSession:
         ic_action = {'ICAction': 'DERIVED_SAA_CRS_RETURN_PB$163$'}
         self._request_page(ic_action)
 
-    def _login(self, letter):
+    def _login(self):
         '''
         Emulate a SOLUS login via a Selenium webdriver. Mainly used for user
         authentication. Returns session cookies, which are retrieved and used
@@ -254,8 +254,6 @@ class CourseSession:
                 except ex as Exception:
                     print('Selenium error: {}\nRetrying...'.format(ex))
                     continue
-
-        print('Running webdriver for authentication for {}...'.format(letter))
 
         chrome_options = Options()
 
@@ -299,8 +297,6 @@ class CourseSession:
             session_cookies[cookie['name']] = cookie['value']
 
         driver.close()
-
-        print('Finished with webdriver for {}'.format(letter))
 
         return session_cookies
 
