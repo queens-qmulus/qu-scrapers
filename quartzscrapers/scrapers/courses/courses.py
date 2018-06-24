@@ -46,7 +46,7 @@ class Courses:
             queue.put(letter)
 
         queue.join()
-        print('ALL THREADS COMPLETE')
+        print('Courses scrape complete')
 
 class CourseWorker(Thread):
     lock = Lock()
