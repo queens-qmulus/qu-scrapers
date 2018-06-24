@@ -1,148 +1,173 @@
 import re
+import requests
 import pendulum
 import chromedriver_binary # Adds chromedriver_binary to path
 
+from queue import Queue
 from urllib.parse import urljoin
+from threading import Thread, Lock
 from collections import OrderedDict
-
-from pymongo import MongoClient
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
 from ..utils import Scraper
 from ..utils.config import QUEENS_USERNAME, QUEENS_PASSWORD
+
 from .courses_helpers import (
-    save_department_data,
-    save_course_data,
-    save_section_data,
+    save_department_data, save_course_data, save_section_data,
 )
 
-
 class Courses:
-    '''A scraper for Queen's courses'''
+    '''
+    A scraper for Queen's courses on SOLUS.
 
-    host = 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/SA/c/SA_LEARNER_SERVICES.SSS_BROWSE_CATLG_P.GBL'
+    The Courses scraper creates 26 threads, one for each letter, to scrape
+    several departments and their courses. It instantiates 26 Course workers,
+    each of which creates a course session that handles a SOLUS login to grab
+    its credentials via the cookies returned from a login.
+    '''
+
     LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
     @staticmethod
-    def scrape(location='./dumps/courses'):
+    def scrape():
         '''Update database records for courses scraper'''
 
-        # Imitate an actual login and grab generated cookies, which allows the
-        # bypass of SOLUS request redirects.
-        Courses.cookies = Courses._login()
+        queue = Queue()
 
-        # TODO: Should be GET (it is)
-        soup = Courses._request_page()
+        for _ in Courses.LETTERS:
+            course_worker = CourseWorker(queue)
+            course_worker.daemon = True
+            course_worker.start()
 
-        # Click and expand a certain letter to see departments
-        # E.G: 'A' has AGHE, ANAT, 'B' has BIOL, BCMP, etc
-        for dept_letter in Courses.LETTERS:
-            print('Starting letter {}\n'.format(dept_letter))
+        for letter in Courses.LETTERS:
+            print('Queueing letter {}'.format(letter))
+            queue.put(letter)
 
+        queue.join()
+        print('ALL THREADS COMPLETE')
+
+class CourseWorker(Thread):
+    lock = Lock()
+
+    def __init__(self, queue):
+        Thread.__init__(self)
+        self.queue = queue
+
+    def run(self):
+        while True:
+            letter = self.queue.get()
+            course_scraper = CourseSession(letter)
+            course_scraper.scrape(letter)
+            self.queue.task_done()
+
+class CourseSession:
+    """A scraper for Queen's courses"""
+
+    host = 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/SA/c/SA_LEARNER_SERVICES.SSS_BROWSE_CATLG_P.GBL'
+
+    def __init__(self, letter, location='./dumps/courses'):
+        self.cookies = self._login(letter)
+        self.location = location
+        self.scraper = Scraper()
+
+    def scrape(self, letter):
+        soup = self._request_page()
+        departments = self._get_departments(soup, letter)
+
+        print('Letter {} has {} depts.'.format(letter, len(departments)))
+
+        # For each department under a certain letter search
+        for department in departments:
             try:
-                departments = Courses._get_departments(soup, dept_letter)
+                dept_data = self._parse_department_data(department)
+                save_department_data(dept_data, self.scraper, self.location)
 
-                print('Got departments. Parsing each department')
+                courses = department.find_all('tr', id=re.compile('trCOURSE_LIST'))
 
-                # For each department under a certain letter search
-                for department in departments:
+                # For each course under a certain department
+                for course in courses:
+                    return_state = 'DERIVED_SAA_CRS_RETURN_PB$163$'
+
                     try:
-                        dept_data = Courses._parse_department_data(department)
-                        save_department_data(dept_data, location)
+                        course_number = course.find('a', id=re.compile('CRSE_NBR\$'))['id']
+                        course_name = course.find('span', id=re.compile('CRSE_TITLE\$')).text
 
-                        courses = department.find_all('tr', id=re.compile('trCOURSE_LIST'))
+                        if not course_number:
+                            print('Course number does not exist. Skipping')
+                            continue
 
-                        # For each course under a certain department
-                        for course in courses:
-                            return_state = 'DERIVED_SAA_CRS_RETURN_PB$163$'
+                        if 'unspecified' in course_name.lower():
+                            print('Skipping unspecified course')
+                            continue
 
-                            try:
-                                course_number = course.find('a', id=re.compile('CRSE_NBR\$'))['id']
-                                course_name = course.find('span', id=re.compile('CRSE_TITLE\$')).text
+                        # Note: Selecting course only takes one parameter, which is the ICAction
+                        ic_action = {'ICAction': course_number}
+                        soup = self._request_page(ic_action)
 
-                                if not course_number:
-                                    print('Course number does not exist. Skipping')
-                                    continue
+                        # Some courses have multiple offerings of the same course
+                        # E.g: MATH121 offered on campus and online. Check if
+                        # table representing academic levels exists
+                        if not self._has_multiple_course_offerings(soup):
+                            title = soup.find('span', id='DERIVED_CRSECAT_DESCR200').text.strip()
+                            print('{}\n--------------------------------'.format(title))
+                            print('Only one course offering here. Parsing course data')
 
-                                if 'unspecified' in course_name.lower():
-                                    print('Skipping unspecified course')
-                                    continue
+                            self._navigate_and_parse_course(soup)
+                        else:
+                            return_state = 'DERIVED_SSS_SEL_RETURN_PB$181$'
+                            title = soup.find('span', id='DERIVED_SSS_SEL_DESCR200').text.strip()
+                            print('{}\n--------------------------------'.format(title))
+                            print('** THIS HAS MULITPLE COURSE OFFERINGS **')
 
-                                # TODO: Should be POST (it isn't)
-                                # Note: Selecting course only takes one parameter, which is the ICAction
-                                ic_action = {'ICAction': course_number}
-                                soup = Courses._request_page(ic_action)
+                            academic_levels = self._get_academic_levels(soup)
 
-                                # Some courses have multiple offerings of the same course
-                                # E.g: MATH121 offered on campus and online. Check if
-                                # table representing academic levels exists
-                                if not Courses._has_multiple_course_offerings(soup):
-                                    title = soup.find('span', id='DERIVED_CRSECAT_DESCR200').text.strip()
-                                    print('{}\n--------------------------------'.format(title))
-                                    print('Only one course offering here. Parsing course data')
+                            for academic_level in academic_levels:
+                                try:
+                                    career_number = academic_level['id']
+                                    career_name = academic_level.text.strip()
+                                    print('Getting career: {}'.format(career_name))
 
-                                    Courses._navigate_and_parse_course(soup, location)
-                                else:
-                                    return_state = 'DERIVED_SSS_SEL_RETURN_PB$181$'
-                                    title = soup.find('span', id='DERIVED_SSS_SEL_DESCR200').text.strip()
-                                    print('{}\n--------------------------------'.format(title))
-                                    print('** THIS HAS MULITPLE COURSE OFFERINGS **')
+                                    # go from a certain academic level to basic course page
+                                    ic_action = {'ICAction': career_number}
 
-                                    academic_levels = Courses._get_academic_levels(soup)
+                                    soup = self._request_page(ic_action)
+                                    self._navigate_and_parse_course(soup)
 
-                                    for academic_level in academic_levels:
-                                        try:
-                                            career_number = academic_level['id']
-                                            career_name = academic_level.text.strip()
-                                            print('Getting career: {}'.format(career_name))
+                                except Exception as ex:
+                                    self.scraper.handle_error(ex, 'scrape_inner')
 
-                                            # go from a certain academic level to basic course page
-                                            ic_action = {'ICAction': career_number}
-
-                                            soup = Courses._request_page(ic_action)
-                                            Courses._navigate_and_parse_course(soup, location)
-
-                                        except Exception as ex:
-                                            Scraper.handle_error(ex, 'scrape')
-
-                                    print('Done careers.')
-
-                            except Exception as ex:
-                                Scraper.handle_error(ex, 'scrape')
-
-                            # go back to course listing
-                            print('Returning to course list\n')
-                            ic_action = {'ICAction': return_state}
-                            Courses._request_page(ic_action)
-
-                        print('\nDone department')
+                            print('Done careers.')
 
                     except Exception as ex:
-                        Scraper.handle_error(ex, 'scrape')
+                        self.scraper.handle_error(ex, 'scrape_middle')
 
-                print('\nDone letter {}'.format(dept_letter))
+                    # go back to course listing
+                    print('Returning to course list\n')
+                    ic_action = {'ICAction': return_state}
+                    self._request_page(ic_action)
+
+                print('\nDone department')
 
             except Exception as ex:
-                Scraper.handle_error(ex, 'scrape')
+                self.scraper.handle_error(ex, 'scrape_outer')
 
-        print('\nCourses scrape complete')
+        print('\nDone letter {}'.format(letter))
 
-    @staticmethod
-    def _navigate_and_parse_course(soup, location):
+    def _navigate_and_parse_course(self, soup):
         try:
             # course parse
-            course_data = Courses._parse_course_data(soup)
-            save_course_data(course_data, location)
+            course_data = self._parse_course_data(soup)
+            save_course_data(course_data, self.scraper, self.location)
 
             # section(s) parse
-            if not Courses._has_course_sections(soup):
+            if not self._has_course_sections(soup):
                 print('No course sections. Skipping deep scrape')
             else:
                 # go to sections page
                 ic_action = {'ICAction': 'DERIVED_SAA_CRS_SSR_PB_GO'}
-                soup = Courses._request_page(ic_action)
+                soup = self._request_page(ic_action)
 
                 terms = soup.find('select', id='DERIVED_SAA_CRS_TERM_ALT').find_all('option')
 
@@ -159,19 +184,19 @@ class Courses:
                             'DERIVED_SAA_CRS_TERM_ALT': term_number,
                             }
 
-                        soup = Courses._request_page(payload)
+                        soup = self._request_page(payload)
 
                         # view all sections
                         # NOTE: PeopleSoft maintains state of 'View All' for sections
                         # per every other new section you select. This means it
                         # only needs to be expanded ONCE.
-                        if Courses._is_view_sections_closed(soup):
+                        if self._is_view_sections_closed(soup):
                             print("'View All' tab is minimized. Requesting 'View All' for current term...")
                             payload.update({'ICAction': 'CLASS_TBL_VW5$hviewall$0'})
-                            soup = Courses._request_page(payload)
+                            soup = self._request_page(payload)
                             print("'View All' request complete.")
 
-                        sections = Courses._get_sections(soup)
+                        sections = self._get_sections(soup)
 
                         print("Total sections: {}\n".format(len(sections)))
 
@@ -182,37 +207,37 @@ class Courses:
 
                                 # go to sections page.
                                 payload.update({'ICAction': section})
-                                section_soup = Courses._request_page(payload)
-                                course_section_base_data, course_section_data = Courses._parse_course_section_data(section_soup, course_data, section_name)
+                                section_soup = self._request_page(payload)
+                                course_section_base_data, course_section_data = self._parse_course_section_data(section_soup, course_data, section_name)
 
                                 save_section_data(
                                     course_section_base_data,
                                     course_section_data,
-                                    location
+                                    self.scraper,
+                                    self.location
                                 )
 
                             except Exception as ex:
-                                Scraper.handle_error(ex, '_navigate_and_parse_course')
+                                self.scraper.handle_error(ex, '_navigate_and_parse_course_inner')
 
                             # go back to sections.
                             ic_action = {'ICAction': 'CLASS_SRCH_WRK2_SSR_PB_CLOSE'}
-                            Courses._request_page(ic_action)
+                            self._request_page(ic_action)
 
                         print('Done term\n')
 
                     except Exception as ex:
-                        Scraper.handle_error(ex, '_navigate_and_parse_course')
+                        self.scraper.handle_error(ex, '_navigate_and_parse_course_middle')
 
                 print('Done course')
 
         except Exception as ex:
-            Scraper.handle_error(ex, '_navigate_and_parse_course')
+            self.scraper.handle_error(ex, '_navigate_and_parse_course_outer')
 
         ic_action = {'ICAction': 'DERIVED_SAA_CRS_RETURN_PB$163$'}
-        Courses._request_page(ic_action)
+        self._request_page(ic_action)
 
-    @staticmethod
-    def _login():
+    def _login(self, letter):
         '''
         Emulate a SOLUS login via a Selenium webdriver. Mainly used for user
         authentication. Returns session cookies, which are retrieved and used
@@ -222,14 +247,29 @@ class Courses:
             Object
         '''
 
-        print('Running webdriver for authentication...')
+        def run_selenium_routine(func):
+            while True:
+                try:
+                    return func()
+                except ex as Exception:
+                    print('Selenium error: {}\nRetrying...'.format(ex))
+                    continue
+
+        print('Running webdriver for authentication for {}...'.format(letter))
 
         chrome_options = Options()
-        chrome_options.add_argument('--headless')
 
-        driver = webdriver.Chrome()
-        driver.set_page_load_timeout(30000) # temporary
-        driver.implicitly_wait(30000) # temporary, timeout to for an element to be found
+        # prevent images from loading
+        prefs = {'profile.managed_default_content_settings.images': 2}
+
+        chrome_options.add_argument('--headless')
+        chrome_options.add_experimental_option('prefs', prefs)
+
+        driver = webdriver.Chrome(chrome_options=chrome_options)
+
+        # timeout to for an element to be found
+        driver.implicitly_wait(30)
+        driver.set_page_load_timeout(30)
         driver.get('https://my.queensu.ca')
 
         username_field = driver.find_element_by_id('username')
@@ -241,7 +281,12 @@ class Courses:
         password_field.send_keys(QUEENS_PASSWORD)
 
         driver.find_element_by_class_name('form-button').click()
-        driver.find_element_by_class_name('solus-tab').click()
+
+        # sometimes, Selenium errors out when searching for the SOLUS tab.
+        # retry this routine until it succeeds.
+        run_selenium_routine(
+            lambda: driver.find_element_by_class_name('solus-tab').click()
+        )
 
         iframe = driver.find_element_by_id('ptifrmtgtframe')
 
@@ -255,17 +300,18 @@ class Courses:
 
         driver.close()
 
-        print('Finished with webdriver')
+        print('Finished with webdriver for {}'.format(letter))
 
         return session_cookies
 
-    @staticmethod
-    def _request_page(params=None):
-        return Scraper.http_request(
-            url=Courses.host, params=params, cookies=Courses.cookies)
+    def _request_page(self, params=None):
+        return self.scraper.http_request(
+            url=self.host,
+            params=params,
+            cookies=self.cookies
+        )
 
-    @staticmethod
-    def _get_hidden_params(soup):
+    def _get_hidden_params(self, soup):
         '''
         Parses HTML for hidden values that represent SOLUS parameters. SOLUS
         uses dynamic parameters to represent user state given certain actions
@@ -288,14 +334,15 @@ class Courses:
 
         return params
 
-    @staticmethod
-    def _get_departments(soup, letter):
+    def _get_departments(self, soup, letter):
+        """Click and expand a certain letter to see departments
+        E.G: 'A' has AGHE, ANAT, 'B' has BIOL, BCMP, etc
+        """
         def update_params_and_make_request(soup, ic_action):
-            payload = Courses._get_hidden_params(soup)
+            payload = self._get_hidden_params(soup)
             payload.update(ic_action)
 
-            # TODO: Should be POST (it isn't)
-            soup = Courses._request_page(payload)
+            soup = self._request_page(payload)
             return soup
 
         # Get all departments for a certain letter
@@ -312,30 +359,27 @@ class Courses:
 
         return departments
 
-    @staticmethod
-    def _get_sections(soup):
+    def _get_sections(self, soup):
         return [sec['id'] for sec in soup.find_all(
             'a', id=re.compile('CLASS_SECTION\$'))]
 
-    @staticmethod
-    def _has_multiple_course_offerings(soup):
+    def _on_course_list(self, soup):
+        return soup.find('span', id='DERIVED_REGFRM1_TITLE1')
+
+    def _has_multiple_course_offerings(self, soup):
         return soup.find('table', id='CRSE_OFFERINGS$scroll$0')
 
-    @staticmethod
-    def _has_course_sections(soup):
+    def _has_course_sections(self, soup):
         return soup.find('input', id='DERIVED_SAA_CRS_SSR_PB_GO')
 
-    @staticmethod
-    def _is_view_sections_closed(soup):
+    def _is_view_sections_closed(self, soup):
         view_all_tab = soup.find('a', id='CLASS_TBL_VW5$hviewall$0')
         return view_all_tab and 'View All' in view_all_tab
 
-    @staticmethod
-    def _get_academic_levels(soup):
+    def _get_academic_levels(self, soup):
         return [url for url in soup.find_all('a', id=re.compile('CAREER\$'))]
 
-    @staticmethod
-    def _parse_department_data(department):
+    def _parse_department_data(self, department):
         REGEX_TITLE = re.compile('DERIVED_SSS_BCC_GROUP_BOX_1\$147\$\$span\$')
         dept_str = department.find('span', id=REGEX_TITLE).text.strip()
 
@@ -356,8 +400,7 @@ class Courses:
 
         return data
 
-    @staticmethod
-    def _parse_course_data(soup):
+    def _parse_course_data(self, soup):
         # All HTML id's used via regular expressions
         REGEX_TITLE = re.compile('DERIVED_CRSECAT_DESCR200')
         REGEX_CAMPUS = re.compile('CAMPUS_TBL_DESCR')
@@ -385,8 +428,8 @@ class Courses:
             return dept, course_code, course_name
 
         def filter_description(soup):
-            # TODO: Figure out way to filter for 'NOTE', 'LEARNING HOURS', etc
-            # text sections from description
+            # TODO: Filter different text sections from description, such as
+            # 'NOTE', 'LEARNING HOURS', etc
             descr_raw = soup.find('span', id=REGEX_DESC)
 
             if not descr_raw:
@@ -452,11 +495,18 @@ class Courses:
 
         # =========================== Course Detail ===========================
         academic_level = soup.find('span', id=REGEX_AC_LVL).text.strip()
-        units = float(soup.find('span', id=REGEX_UNITS).text.strip())
+
+        # Note: Anomaly scenario of LAW 696 having a range of units, such as
+        # "2.00 - 8.00". This is handled by splitting and taking the larger
+        # number.
+        units = float(soup.find('span', id=REGEX_UNITS).text.strip().split(' - ')[-1])
         grading_basis = soup.find('span', id=REGEX_BASIS).text.strip()
-        campus = soup.find('span', id=REGEX_CAMPUS).text.strip()
         academic_group = soup.find('span', id=REGEX_AC_GRP).text.strip()
         academic_org = soup.find('span', id=REGEX_AC_ORG).text.strip()
+
+        # some sections have no campus listed
+        campus_raw = soup.find('span', id=REGEX_CAMPUS)
+        campus = campus_raw.text.strip() if campus_raw else 'None'
 
         # course_components is a dict of data
         course_components_rows = soup.find('table', id=REGEX_CRSE_CMPS).find_all('tr')[1:]
@@ -498,8 +548,7 @@ class Courses:
         # retain key-value order of dictionary
         return OrderedDict(data)
 
-    @staticmethod
-    def _parse_course_section_data(soup, basic_data, section_name):
+    def _parse_course_section_data(self, soup, basic_data, section_name):
         DAY_MAP = {
             'Mo': 'Monday',
             'Tu': 'Tuesday',
@@ -534,22 +583,37 @@ class Courses:
         # Note: Some rows have dates such as "MoTu 9:30AM - 10:30AM"
         for date_row in date_rows:
             days = []
-            date_times = date_row.find('span', id=re.compile('MTG_SCHED\$')).text.strip().split(' ')
 
-            day_str = date_times[0]
+            # some (incorrect) sections will have a missing day, such as a
+            # listing like "12:00AM - 12:00AM" instead of "Mo 8:30AM - 9:30AM"
+            # filter out hyphen to ensure the ordering of start/end indices
+            # are consistent
+            date_times = date_row.find(
+                'span', id=re.compile('MTG_SCHED\$')
+            ).text.strip().replace(' - ', ' ').split(' ')
 
             if 'TBA' in date_times:
                 start_time = end_time = 'TBA'
             else:
-                start_time = pendulum.parse(date_times[1], strict=False).isoformat().split('T')[1][:5]
-                end_time = pendulum.parse(date_times[3], strict=False).isoformat().split('T')[1][:5]
+                # No day is listed. Mark as null
+                day_str = date_times[0] if len(date_times) > 2 else 'n/a'
+
+                start_time = pendulum.parse(date_times[-2], strict=False).isoformat().split('T')[1][:5]
+                end_time = pendulum.parse(date_times[-1], strict=False).isoformat().split('T')[1][:5]
 
                 for day_short, day_long in DAY_MAP.items():
                     if day_short in day_str:
                         days.append(day_long)
 
+                # If no day_str exists, mark day as n/a to be flagged later
+                if not days:
+                    days.append(day_str)
+
             location = soup.find('span', id=re.compile('MTG_LOC\$')).text.strip()
-            instructors = soup.find('span', id=re.compile('MTG_INSTR\$')).text.strip().split(', \r')
+            instructors_raw = soup.find('span', id=re.compile('MTG_INSTR\$')).text.strip().split(', \r')
+
+            # turn "Last,First" into "Last, First"
+            instructors = [ins.replace(',', ', ') for ins in instructors_raw]
 
             # start/end dates for a partcular SECTION
             meeting_dates = soup.find('span', id=re.compile('MTG_DATE\$')).text.strip().split(' - ')
@@ -576,7 +640,8 @@ class Courses:
                 course_dates.append(OrderedDict(course_date))
             else:
                 for day in days:
-                    course_date['day'] = day
+                    # flag non-existent day as empty string
+                    course_date['day'] = '' if day == 'n/a' else day
                     course_dates.append(OrderedDict(course_date))
 
         # ========================= Class Availability ========================

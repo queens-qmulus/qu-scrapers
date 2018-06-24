@@ -13,6 +13,7 @@ class Journal:
 
     host = 'http://www.queensjournal.ca'
     slug = 'queensjournal'
+    scraper = Scraper()
 
     @staticmethod
     def scrape(deep=False, location='./dumps/news'):
@@ -53,7 +54,10 @@ class Journal:
                         for article_rel_url in article_rel_urls:
                             try:
                                 article_page, article_url = get_article_page(
-                                    Journal.host, article_rel_url)
+                                    Journal.scraper,
+                                    Journal.host,
+                                    article_rel_url,
+                                )
 
                                 article_data = (
                                     Journal._parse_article_data(
@@ -62,17 +66,21 @@ class Journal:
                                 )
 
                                 if article_data:
-                                    save_article(article_data, location)
+                                    save_article(
+                                        Journal.scraper,
+                                        article_data,
+                                        location
+                                    )
 
-                                Scraper.wait()
+                                Journal.scraper.wait()
                             except Exception as ex:
-                                Scraper.handle_error(ex, 'scrape')
+                                Journal.scraper.handle_error(ex, 'scrape')
 
                     except Exception as ex:
-                        Scraper.handle_error(ex, 'scrape')
+                        Journal.scraper.handle_error(ex, 'scrape')
 
             except Exception as ex:
-                Scraper.handle_error(ex, 'scrape')
+                Journal.scraper.handle_error(ex, 'scrape')
 
 
     @staticmethod
@@ -88,7 +96,7 @@ class Journal:
         '''
 
         host_url = urljoin(Journal.host, 'news')
-        soup = Scraper.http_request(host_url)
+        soup = Journal.scraper.http_request(host_url)
 
         year_urls = soup.find('ul', 'views-summary').find_all('li')
         year_rel_urls = [url.find('a')['href'] for url in year_urls]
@@ -105,7 +113,7 @@ class Journal:
         '''
 
         year_url = urljoin(Journal.host, relative_url)
-        soup = Scraper.http_request(year_url)
+        soup = Journal.scraper.http_request(year_url)
 
         last_page = soup.find('li', 'pager-last')
         page_url = last_page.find('a')['href'] if last_page else 'page=0'
@@ -127,7 +135,7 @@ class Journal:
             List[String]
         '''
         year_url = urljoin(Journal.host, relative_url)
-        soup =  Scraper.http_request(year_url, params=dict(page=page_index))
+        soup =  Journal.scraper.http_request(year_url, params=dict(page=page_index))
 
         articles = soup.find_all('div', 'node-story')
         article_rel_urls = (

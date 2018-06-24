@@ -13,6 +13,7 @@ class Gazette:
 
     host = 'http://www.queensu.ca'
     slug = 'gazette'
+    scraper = Scraper()
 
     @staticmethod
     def scrape(
@@ -40,21 +41,22 @@ class Gazette:
                 for article_rel_url, issue_date in zip(article_rel_urls, article_issue_dates):
                     try:
                         article_page, article_url = get_article_page(
-                            Gazette.host, article_rel_url)
+                            Gazette.scraper, Gazette.host, article_rel_url)
 
                         article_data = Gazette._parse_article_data(
                             article_page, article_url, issue_date, slug)
 
                         if article_data:
-                            save_article(article_data, location)
+                            save_article(
+                                Gazette.scraper, article_data, location)
 
-                        Scraper.wait()
+                        Gazette.scraper.wait()
 
                     except Exception as ex:
-                        Scraper.handle_error(ex, 'scrape')
+                        Gazette.scraper.handle_error(ex, 'scrape')
 
             except Exception as ex:
-                Scraper.handle_error(ex, 'scrape')
+                Gazette.scraper.handle_error(ex, 'scrape')
 
     @staticmethod
     def _get_num_pages(relative_url, deep):
@@ -78,7 +80,7 @@ class Gazette:
             })
 
         stories_all_url = urljoin(Gazette.host, relative_url)
-        soup = Scraper.http_request(stories_all_url, params=params)
+        soup = Gazette.scraper.http_request(stories_all_url, params=params)
 
         page_url = soup.find('li', 'pager-last').find('a')['href']
 
@@ -100,7 +102,7 @@ class Gazette:
         '''
 
         article_url = urljoin(Gazette.host, relative_url)
-        soup =  Scraper.http_request(article_url, params=dict(page=page_index))
+        soup =  Gazette.scraper.http_request(article_url, params=dict(page=page_index))
 
         articles = soup.find_all('div', class_='story-info')
 
@@ -120,7 +122,7 @@ class Gazette:
     @staticmethod
     def _get_article_page(article_rel_url):
         article_url = urljoin(Gazette.host, article_rel_url)
-        article_page = Scraper.http_request(article_url)
+        article_page = Gazette.scraper.http_request(article_url)
 
         print('Article: {url}'.format(url=article_url))
 

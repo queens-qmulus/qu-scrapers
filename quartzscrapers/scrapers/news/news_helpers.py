@@ -1,8 +1,6 @@
 import re
 from urllib.parse import urljoin
 
-from ..utils import Scraper
-
 
 def get_urls_on_depth(urls, deep=False):
     if deep:
@@ -11,15 +9,15 @@ def get_urls_on_depth(urls, deep=False):
     else:
         return [urls[0]]
 
-def get_article_page(host_url, article_rel_url):
+def get_article_page(scraper, host_url, article_rel_url):
     article_url = urljoin(host_url, article_rel_url)
-    article_page = Scraper.http_request(article_url)
+    article_page = scraper.http_request(article_url)
 
     print('Article: {url}'.format(url=article_url))
 
     return article_page, article_url
 
-def save_article(article_data, location):
+def save_article(scraper, article_data, location):
     date, _ = article_data['published'].split('T')
     title_raw = article_data['url'].split('/')[-1]
 
@@ -28,5 +26,5 @@ def save_article(article_data, location):
     title = re.sub(r'(%[a-zA-Z0-9]{2}|[+])', '', title_raw)
     article_filename = '{date}_{title}'.format(date=date, title=title)
 
-    Scraper.write_data(article_data, article_filename, location)
+    scraper.write_data(article_data, article_filename, location)
     print('Article data saved\n')

@@ -1,4 +1,3 @@
-from ..utils import Scraper
 from .journal import Journal
 from .gazette import Gazette
 from .alumnireview import AlumniReview

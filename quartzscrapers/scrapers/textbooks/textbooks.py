@@ -19,6 +19,7 @@ class Textbooks:
     '''
 
     host = 'https://www.campusbookstore.com'
+    scraper = Scraper()
 
     @staticmethod
     def scrape(location='./dumps/textbooks'):
@@ -81,22 +82,26 @@ class Textbooks:
 
                                 textbook_data.append(textbook_info)
 
-                                Scraper.wait()
+                                Textbooks.scraper.wait()
 
                             except Exception as ex:
-                                Scraper.handle_error(ex, 'scrape')
+                                Textbooks.scraper.handle_error(ex, 'scrape')
 
                         if course_data or textbook_data:
                             save_textbook_data(
-                                course_data, textbook_data, location)
+                                course_data,
+                                textbook_data,
+                                Textbooks.scraper,
+                                location
+                            )
 
-                        Scraper.wait()
+                        Textbooks.scraper.wait()
 
                     except Exception as ex:
-                        Scraper.handle_error(ex, 'scrape')
+                        Textbooks.scraper.handle_error(ex, 'scrape')
 
             except Exception as ex:
-                Scraper.handle_error(ex, 'scrape')
+                Textbooks.scraper.handle_error(ex, 'scrape')
 
     @staticmethod
     def _get_departments(relative_url):
@@ -110,7 +115,7 @@ class Textbooks:
         '''
 
         campus_bookstore_url = urljoin(Textbooks.host, relative_url)
-        soup = Scraper.http_request(campus_bookstore_url)
+        soup = Textbooks.scraper.http_request(campus_bookstore_url)
 
         departments_raw = soup.find_all('label', 'checkBoxContainer')
         departments = [dep.text.strip() for dep in departments_raw]
@@ -134,7 +139,7 @@ class Textbooks:
 
         course_rel_urls = []
         department_url = urljoin(Textbooks.host, relative_url)
-        soup = Scraper.http_request(department_url, params=dict(q=department))
+        soup = Textbooks.scraper.http_request(department_url, params=dict(q=department))
 
         # Use regex to filter textbooks having the right department substring
         regex = department + '[0-9]+'
@@ -155,7 +160,7 @@ class Textbooks:
                 course_rel_urls.append(course_rel_url)
 
             except Exception as ex:
-                Scraper.handle_error(ex, '_get_course_rel_urls')
+                Textbooks.scraper.handle_error(ex, '_get_course_rel_urls')
 
         return course_rel_urls
 
@@ -169,7 +174,7 @@ class Textbooks:
         '''
 
         course_url = urljoin(Textbooks.host, course_rel_url)
-        soup = Scraper.http_request(course_url)
+        soup = Textbooks.scraper.http_request(course_url)
 
         return soup, course_url
 
@@ -287,7 +292,7 @@ class Textbooks:
             Textbooks.host,
             textbook.find('img', {'data-id': 'toLoad'})['data-url']
         )
-        image_url = Scraper.http_request(image_ref, parse=False).text
+        image_url = Textbooks.scraper.http_request(image_ref, parse=False).text
 
         status_raw = textbook.find('dd', 'textbookStatus')
         status = status_raw.text.strip() if status_raw else None
@@ -309,7 +314,7 @@ class Textbooks:
                 price_used = float(prices[1].text.strip()[1:])
 
         # == Info retrieved externally (via Google Books API) ==
-        google_books_info = get_google_books_info(isbn_13)
+        google_books_info = get_google_books_info(isbn_13, Textbooks.scraper)
 
         if google_books_info:
             title = google_books_info['title']

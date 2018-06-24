@@ -1,22 +1,19 @@
-from ..utils import Scraper
-
-
-def save_department_data(department_data, location):
+def save_department_data(department_data, scraper, location):
     filename = department_data['code']
     filepath = '{}/departments'.format(location)
 
-    Scraper.write_data(department_data, filename, filepath)
+    scraper.write_data(department_data, filename, filepath)
     print('Department data saved\n')
 
-def save_course_data(course_data, location):
+def save_course_data(course_data, scraper, location):
     dept, code = course_data['department'], course_data['course_code']
     filename = '{dept}_{code}'.format(dept=dept, code=code)
     filepath = '{}/courses'.format(location)
 
-    Scraper.write_data(course_data, filename, filepath)
+    scraper.write_data(course_data, filename, filepath)
     print('Course data saved\n')
 
-def save_section_data(course_data, section_data, location):
+def save_section_data(course_data, section_data, scraper, location):
     """Preprocess and save course section data to JSON.
 
     Multiple courses with the same ID can exist. Such as MATH121 for main
@@ -34,7 +31,11 @@ def save_section_data(course_data, section_data, location):
     campus, *_ = course_data['campus'].split(' ')
 
     # "Undergraduate Online" => "Undergraduate_Online"
-    academic_level = '_'.join(course_data['academic_level'].split(' '))
+    # "Non-Credit" => "Non_Credit"
+    academic_level = '_'.join(
+        course_data['academic_level'].replace('-', ' ').split(' ')
+    )
+
     dept = course_data['department']
     code = course_data['course_code']
 
@@ -49,6 +50,6 @@ def save_section_data(course_data, section_data, location):
         code=code,
     )
 
-    Scraper.update_data(course_data, section_data, key, filename, filepath)
+    scraper.update_data(course_data, section_data, key, filename, filepath)
 
     print('Section data saved\n')

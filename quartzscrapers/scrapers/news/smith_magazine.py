@@ -12,6 +12,7 @@ class SmithMagazine:
 
     host = 'https://smith.queensu.ca'
     slug = 'smithmagazine'
+    scraper = Scraper()
 
     @staticmethod
     def scrape(deep=False, location='./dumps/news'):
@@ -43,24 +44,31 @@ class SmithMagazine:
                         for article_rel_url in article_rel_urls:
                             try:
                                 article_page, article_url = get_article_page(
-                                    SmithMagazine.host, article_rel_url)
+                                    SmithMagazine.scraper,
+                                    SmithMagazine.host,
+                                    article_rel_url
+                                )
 
                                 article_data = SmithMagazine._parse_article_data(
                                     article_page, article_url)
 
                                 if article_data:
-                                    save_article(article_data, location)
+                                    save_article(
+                                        SmithMagazine.scraper,
+                                        article_data,
+                                        location
+                                    )
 
-                                Scraper.wait()
+                                SmithMagazine.scraper.wait()
 
                             except Exception as ex:
-                                Scraper.handle_error(ex, 'scrape')
+                                SmithMagazine.scraper.handle_error(ex, 'scrape')
 
                 except Exception as ex:
-                    Scraper.handle_error(ex, 'scrape')
+                    SmithMagazine.scraper.handle_error(ex, 'scrape')
 
         except Exception as ex:
-            Scraper.handle_error(ex, 'scrape')
+            SmithMagazine.scraper.handle_error(ex, 'scrape')
 
     @staticmethod
     def _get_magazine_issues():
@@ -72,7 +80,7 @@ class SmithMagazine:
         '''
 
         magazine_archive_url = urljoin(SmithMagazine.host, 'magazine/archive')
-        soup = Scraper.http_request(magazine_archive_url)
+        soup = SmithMagazine.scraper.http_request(magazine_archive_url)
 
         magazine_archives = soup.find_all('div', 'field-content')
         magazine_archive_urls = (
@@ -94,7 +102,7 @@ class SmithMagazine:
         '''
 
         issue_url = urljoin(SmithMagazine.host, relative_url)
-        soup =  Scraper.http_request(issue_url)
+        soup =  SmithMagazine.scraper.http_request(issue_url)
 
         article_sections = (
             soup.find('div', 'group-right').find_all('div', 'field')

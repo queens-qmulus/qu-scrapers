@@ -12,6 +12,7 @@ class JurisDiction:
 
     host = 'http://www.juris-diction.ca'
     slug = 'jurisdiction'
+    scraper = Scraper()
 
     @staticmethod
     def scrape(deep=False, location='./dumps/news'):
@@ -34,7 +35,7 @@ class JurisDiction:
 
                     for archive_page_url in archive_page_urls:
                         try:
-                            archive_page = Scraper.http_request(archive_page_url)
+                            archive_page = JurisDiction.scraper.http_request(archive_page_url)
 
                             print('Page {page_num}'.format(page_num=page_num))
                             print('-------')
@@ -45,7 +46,10 @@ class JurisDiction:
                             for article_rel_url in article_rel_urls:
                                 try:
                                     article_page, article_url = get_article_page(
-                                            JurisDiction.host, article_rel_url)
+                                        JurisDiction.scraper,
+                                        JurisDiction.host,
+                                        article_rel_url
+                                    )
 
                                     article_data = (
                                         JurisDiction._parse_article_data(
@@ -54,23 +58,27 @@ class JurisDiction:
                                     )
 
                                     if article_data:
-                                        save_article(article_data, location)
+                                        save_article(
+                                            JurisDiction.scraper,
+                                            article_data,
+                                            location
+                                        )
 
-                                    Scraper.wait()
+                                    JurisDiction.scraper.wait()
 
                                 except Exception as ex:
-                                    Scraper.handle_error(ex, 'scrape')
+                                    JurisDiction.scraper.handle_error(ex, 'scrape')
 
                             page_num += 1
 
                         except Exception as ex:
-                            Scraper.handle_error(ex, 'scrape')
+                            JurisDiction.scraper.handle_error(ex, 'scrape')
 
                 except Exception as ex:
-                    Scraper.handle_error(ex, 'scrape')
+                    JurisDiction.scraper.handle_error(ex, 'scrape')
 
         except Exception as ex:
-            Scraper.handle_error(ex, 'scrape')
+            JurisDiction.scraper.handle_error(ex, 'scrape')
 
     @staticmethod
     def _get_archive_month_urls():
@@ -81,7 +89,7 @@ class JurisDiction:
             List[String]
         '''
 
-        soup = Scraper.http_request(JurisDiction.host)
+        soup = JurisDiction.scraper.http_request(JurisDiction.host)
 
         archives = soup.find('div', id='archives-3').find_all('li')
         archive_month_urls = [arch.find('a')['href'] for arch in archives]
@@ -100,14 +108,14 @@ class JurisDiction:
 
         archive_page_urls = [archive_month_url]
 
-        archive_page = Scraper.http_request(archive_month_url)
+        archive_page = JurisDiction.scraper.http_request(archive_month_url)
 
         # paginate until we no longer see a 'next' button
         while archive_page.find('a', 'next'):
             archive_page_url = archive_page.find('a', 'next')['href']
             archive_page_urls.append(archive_page_url)
 
-            archive_page = Scraper.http_request(archive_page_url)
+            archive_page = JurisDiction.scraper.http_request(archive_page_url)
 
         return archive_page_urls
 

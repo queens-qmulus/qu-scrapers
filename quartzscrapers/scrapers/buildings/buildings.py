@@ -14,6 +14,7 @@ class Buildings:
     '''
 
     host = 'http://www.queensu.ca'
+    scraper = Scraper()
 
     @staticmethod
     def scrape(location='./dumps/buildings'):
@@ -35,7 +36,7 @@ class Buildings:
 
                     print('Building Parameter: {}'.format(building_param))
 
-                    soup = Scraper.http_request(
+                    soup = Buildings.scraper.http_request(
                         campus_url, params={'mapquery': building_param}
                     )
 
@@ -43,13 +44,13 @@ class Buildings:
                         soup, campus_name, building_href)
 
                     if building_data:
-                        Scraper.write_data(
+                        Buildings.scraper.write_data(
                             building_data, building_param, location)
 
                 except Exception as ex:
-                    Scraper.handle_error(ex, 'scrape')
+                    Buildings.scraper.handle_error(ex, 'scrape')
 
-                Scraper.wait()
+                Buildings.scraper.wait()
 
     @staticmethod
     def _get_campuses(relative_url):
@@ -61,7 +62,7 @@ class Buildings:
         '''
 
         campus_overall_url = urljoin(Buildings.host, relative_url)
-        soup = Scraper.http_request(campus_overall_url)
+        soup = Buildings.scraper.http_request(campus_overall_url)
         campuses = soup.find_all('p', 'overall-label')
 
         return campuses
@@ -87,7 +88,7 @@ class Buildings:
         print('========================\n')
 
         campus_url = urljoin(Buildings.host, campus_url)
-        soup = Scraper.http_request(campus_url)
+        soup = Buildings.scraper.http_request(campus_url)
         campus_map = soup.find('map')
         buildings = campus_map.find_all('area')
 

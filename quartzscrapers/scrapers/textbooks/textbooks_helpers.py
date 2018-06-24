@@ -1,8 +1,7 @@
-from ..utils import Scraper
 from ..utils.config import GOOGLE_BOOKS_KEY
 
 
-def get_google_books_info(isbn_13):
+def get_google_books_info(isbn_13, scraper):
     '''
     Retrieve additional textbook information missing from Queen's Campus
     Bookstore via Google Books API.
@@ -13,7 +12,7 @@ def get_google_books_info(isbn_13):
 
     data = {}
 
-    response = Scraper.http_request(
+    response = scraper.http_request(
         parse=False,
         url='https://www.googleapis.com/books/v1/volumes',
         params=dict(q='ibsn:{isbn}',key='{key}'.format(
@@ -66,7 +65,7 @@ def normalize_string(names):
 
     return new_names
 
-def save_textbook_data(course_list, textbook_list, location):
+def save_textbook_data(course_list, textbook_list, scraper, location):
     '''Preprocess and save textbook data to JSON.
 
     Course information is related to textbooks. Because this is focused on
@@ -85,7 +84,7 @@ def save_textbook_data(course_list, textbook_list, location):
                 isbn=textbook_data['isbn_13'],
             )
 
-            Scraper.update_data(
+            scraper.update_data(
                 textbook_data, course_data, 'courses', filename, location)
 
     print('Textbook data saved\n')

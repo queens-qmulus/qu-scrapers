@@ -2,7 +2,6 @@ import pendulum
 from urllib.parse import urljoin
 
 from .gazette import Gazette
-from ..utils import Scraper
 
 class AlumniReview(Gazette):
     '''
