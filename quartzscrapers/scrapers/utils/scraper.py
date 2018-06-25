@@ -12,7 +12,7 @@ class Scraper:
     '''Scraper base class. Handles common functions amongst all sub scrapers'''
 
     def __init__(self):
-        self.logger = self._init_logger()
+        self.logger = logger = logging.getLogger(__name__)
         self.session = requests.Session()
         self.headers = {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp, */*;q=0.8',
@@ -24,16 +24,6 @@ class Scraper:
             'Upgrade-Insecure-Requests': '1',
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.84 Safari/537.36',
         }
-
-    def _init_logger(self):
-        # disable noisy logs from certain imported modules
-        logging.getLogger("urllib3").setLevel(logging.WARNING)
-        logging.getLogger("selenium").setLevel(logging.WARNING)
-
-        logging.basicConfig(level=logging.DEBUG)
-        logger = logging.getLogger(__name__)
-
-        return logger
 
     # Decorator for retrying behaviour for GET requests. Uses exponential
     # backoff by waiting (2^x) * 1000 milliseconds between each retry, up to

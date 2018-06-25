@@ -15,5 +15,6 @@ chromedriver-binary = "*"
 retrying = "*"
 lxml = "*"
 "flake8" = "*"
+pyyaml = "*"
 
 [dev-packages]

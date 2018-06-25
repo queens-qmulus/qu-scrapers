@@ -1,3 +1,7 @@
+import os
+import yaml
+import logging.config
+
 from quartzscrapers.scrapers.buildings import Buildings
 
 from quartzscrapers.scrapers.news import (
@@ -12,3 +16,8 @@ from quartzscrapers.scrapers.news import (
 from quartzscrapers.scrapers.textbooks import Textbooks
 
 from quartzscrapers.scrapers.courses import Courses
+
+with open(os.path.join(os.path.dirname(__file__), 'logging.yaml'), 'r') as file:
+    config = file.read().format()
+
+logging.config.dictConfig(yaml.safe_load(config))
