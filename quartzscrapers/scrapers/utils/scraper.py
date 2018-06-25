@@ -12,7 +12,7 @@ class Scraper:
     '''Scraper base class. Handles common functions amongst all sub scrapers'''
 
     def __init__(self):
-        self.logger = logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(__name__)
         self.session = requests.Session()
         self.headers = {
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp, */*;q=0.8',
