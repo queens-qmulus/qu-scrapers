@@ -28,7 +28,8 @@ class Courses:
     its credentials via the cookies returned from a login.
     '''
 
-    LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    # LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    LETTERS = 'AB'
     logger = Scraper().logger
 
     @staticmethod

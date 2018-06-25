@@ -54,5 +54,5 @@ loggers:
         - debug_file
         - info_file
         - error_file
-        propagate: no
+        propagate: yes
 ...
