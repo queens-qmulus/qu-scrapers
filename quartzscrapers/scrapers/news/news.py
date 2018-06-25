@@ -3,6 +3,7 @@ from .gazette import Gazette
 from .alumnireview import AlumniReview
 from .smith_magazine import SmithMagazine
 from .jurisdiction import JurisDiction
+from ..utils import Scraper
 
 
 class News:
