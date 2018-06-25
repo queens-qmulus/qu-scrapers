@@ -255,7 +255,7 @@ class CourseSession:
                 try:
                     return func()
                 except Exception as ex:
-                    self.logger.error('Selenium error: {}\nRetrying...'.format(ex))
+                    self.logger.error('Selenium failure: {}'.format(ex))
                     continue
 
         self.logger.info('Running webdriver for authentication...')
