@@ -5,7 +5,7 @@ import chromedriver_binary # Adds chromedriver_binary to path
 
 from queue import Queue
 from urllib.parse import urljoin
-from threading import Thread, Lock
+from threading import Thread
 from collections import OrderedDict
 
 from selenium import webdriver
@@ -15,8 +15,9 @@ from ..utils import Scraper
 from ..utils.config import QUEENS_USERNAME, QUEENS_PASSWORD
 
 from .courses_helpers import (
-    save_department_data, save_course_data, save_section_data,
+    setup_logging, save_department_data, save_course_data, save_section_data,
 )
+
 
 class Courses:
     '''
@@ -28,16 +29,15 @@ class Courses:
     its credentials via the cookies returned from a login.
     '''
 
-    # LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    LETTERS = 'AB'
-    logger = Scraper().logger
+    LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
     @staticmethod
     def scrape():
         '''Update database records for courses scraper'''
 
-        Courses.logger.info('Starting Courses scrape')
+        logger = setup_logging()
 
+        logger.info('Starting Courses scrape')
         queue = Queue()
 
         for _ in Courses.LETTERS:
@@ -49,12 +49,9 @@ class Courses:
             queue.put(letter)
 
         queue.join()
-
-        Courses.logger.info('Completed Courses scrape')
+        logger.info('Completed Courses scrape')
 
 class CourseWorker(Thread):
-    lock = Lock()
-
     def __init__(self, queue):
         Thread.__init__(self)
         self.queue = queue
@@ -256,7 +253,9 @@ class CourseSession:
                 try:
                     return func()
                 except Exception as ex:
-                    self.logger.error('Selenium failure: {}'.format(ex))
+                    self.logger.error(
+                        'Selenium failure: {}'.format(ex), exc_info=True)
+
                     continue
 
         self.logger.info('Running webdriver for authentication...')
@@ -276,26 +275,37 @@ class CourseSession:
         driver.set_page_load_timeout(30)
         driver.get('https://my.queensu.ca')
 
-        username_field = driver.find_element_by_id('username')
-        username_field.clear()
-        username_field.send_keys(QUEENS_USERNAME)
+        # sometimes, Selenium errors out when searching for certain fields.
+        # retry this routines until it succeeds.
+        run_selenium_routine(
+            lambda: driver.find_element_by_id('username').send_keys(
+                QUEENS_USERNAME
+            )
+        )
 
-        password_field = driver.find_element_by_id('password')
-        password_field.clear()
-        password_field.send_keys(QUEENS_PASSWORD)
+        run_selenium_routine(
+            lambda: driver.find_element_by_id('password').send_keys(
+                QUEENS_PASSWORD
+            )
+        )
 
-        driver.find_element_by_class_name('form-button').click()
+        run_selenium_routine(
+            lambda: driver.find_element_by_class_name('form-button').click()
+        )
 
-        # sometimes, Selenium errors out when searching for the SOLUS tab.
-        # retry this routine until it succeeds.
         run_selenium_routine(
             lambda: driver.find_element_by_class_name('solus-tab').click()
         )
 
-        iframe = driver.find_element_by_id('ptifrmtgtframe')
+        iframe = run_selenium_routine(
+            lambda: driver.find_element_by_id('ptifrmtgtframe')
+        )
 
         driver.switch_to_frame(iframe)
-        driver.find_element_by_link_text('Search').click()
+
+        run_selenium_routine(
+            lambda: driver.find_element_by_link_text('Search').click()
+        )
 
         session_cookies = {}
 

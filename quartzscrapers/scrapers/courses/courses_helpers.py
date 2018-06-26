@@ -1,3 +1,20 @@
+import yaml
+import logging.config
+
+def setup_logging():
+    filepath = './quartzscrapers'
+
+    with open('{}/logging.yaml'.format(filepath), 'r') as file:
+        config = file.read().format(
+            format='verbose',
+            filepath='{}/logs'.format(filepath),
+            prefix='courses_'
+        )
+
+    logging.config.dictConfig(yaml.safe_load(config))
+
+    return logging.getLogger(__name__)
+
 def save_department_data(department_data, scraper, location):
     filename = department_data['code']
     filepath = '{}/departments'.format(location)

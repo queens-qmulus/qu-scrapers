@@ -18,8 +18,9 @@ from quartzscrapers.scrapers.courses import Courses
 
 filepath = './quartzscrapers'
 
-# with open(os.path.join(os.path.dirname(__file__), 'logging.yaml'), 'r') as file:
 with open('{}/logging.yaml'.format(filepath), 'r') as file:
-    config = file.read().format(filepath=filepath)
+    config = file.read().format(
+        format='simple', filepath='{}/logs'.format(filepath), prefix=''
+    )
 
 logging.config.dictConfig(yaml.safe_load(config))
