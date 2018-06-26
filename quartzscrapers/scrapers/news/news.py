@@ -32,12 +32,12 @@ class News:
     ]
 
     @staticmethod
-    def scrape(deep=False):
+    def scrape(deep=False, location='./dumps/news'):
         '''Update database records for news scraper'''
 
         News.logger.info('Starting News scrape')
 
         for news_source in News.news_sources:
-            news_source.scrape(deep=deep)
+            news_source.scrape(deep=deep, location=location)
 
         News.logger.info('Completed News scrape')

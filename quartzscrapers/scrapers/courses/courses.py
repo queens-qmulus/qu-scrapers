@@ -32,7 +32,7 @@ class Courses:
     LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
     @staticmethod
-    def scrape():
+    def scrape(location='./dumps/courses'):
         '''Update database records for courses scraper'''
 
         logger = setup_logging()
@@ -41,7 +41,7 @@ class Courses:
         queue = Queue()
 
         for _ in Courses.LETTERS:
-            course_worker = CourseWorker(queue)
+            course_worker = CourseWorker(queue, location)
             course_worker.daemon = True
             course_worker.start()
 
@@ -52,14 +52,15 @@ class Courses:
         logger.info('Completed Courses scrape')
 
 class CourseWorker(Thread):
-    def __init__(self, queue):
+    def __init__(self, queue, location):
         Thread.__init__(self)
         self.queue = queue
+        self.location = location
 
     def run(self):
         while True:
             letter = self.queue.get()
-            course_scraper = CourseSession()
+            course_scraper = CourseSession(self.location)
             course_scraper.scrape(letter)
             self.queue.task_done()
 
@@ -68,7 +69,7 @@ class CourseSession:
 
     host = 'https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/SA/c/SA_LEARNER_SERVICES.SSS_BROWSE_CATLG_P.GBL'
 
-    def __init__(self, location='./dumps/courses'):
+    def __init__(self, location):
         self.scraper = Scraper()
         self.location = location
         self.logger = self.scraper.logger
