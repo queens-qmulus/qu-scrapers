@@ -22,7 +22,6 @@ def run_job(scraper):
 
 
 def init_jobs():
-
     # Execute every Sunday at 2:00am
     scheduler.add_job(
         run_job, 'cron', day_of_week='sun', hour=2, args=[qs.News])
@@ -35,7 +34,7 @@ def init_jobs():
     scheduler.add_job(
         run_job, 'cron', month='8,12', day='sun', hour=2, args=[qs.Textbooks])
 
-    # According to Queen's ITS Services, Standard maintenance periods are
+    # Note: According to Queen's ITS, standard maintenance periods are
     # Tuesdays to Thursdays from 5am to 7:30am and Sundays from 5am to 10am
     # Source: http://www.queensu.ca/its/apps/notices/myqueensu_outage.php
 
@@ -56,7 +55,7 @@ def init_jobs_dev():
 
 if __name__ == '__main__':
     scheduler = BlockingScheduler()
-    init_jobs()
+    init_jobs_dev()
 
     try:
         print('Running jobs')
