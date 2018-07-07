@@ -11,10 +11,10 @@ googlemaps = "*"
 requests = "*"
 selenium = "*"
 chromedriver-binary = "*"
-retrying = "*"
 lxml = "*"
 "flake8" = "*"
 pyyaml = "*"
 pygithub = "*"
+backoff = "*"
 
 [dev-packages]

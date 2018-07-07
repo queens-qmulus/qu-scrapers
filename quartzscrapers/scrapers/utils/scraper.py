@@ -4,7 +4,7 @@ import time
 import logging
 import requests
 
-from retrying import retry
+import backoff
 from bs4 import BeautifulSoup
 
 
@@ -25,10 +25,8 @@ class Scraper:
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.84 Safari/537.36',
         }
 
-    # Decorator for retrying behaviour for GET requests. Uses exponential
-    # backoff by waiting (2^x) * 1000 milliseconds between each retry, up to
-    # 10 seconds, then 10 seconds afterwards
-    @retry(wait_exponential_multiplier=1000, wait_exponential_max=10000)
+    # Decorator for retrying HTTP requests. Using exponential backoff
+    @backoff.on_exception(backoff.expo, requests.exceptions.RequestException, max_time=60)
     def http_request(
         self,
         url,

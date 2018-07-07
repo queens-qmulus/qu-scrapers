@@ -104,6 +104,8 @@ def write_files(path_in, path_out, files):
     with open(path_out, 'w') as merged_file:
         for file in files:
             with open('{}/{}'.format(path_in, file), 'r') as f:
+
+                # Flatten the raw JSON files, which are nested
                 merged_file.write(
                     f.read().replace('\n', '').replace('  ', '') + '\n')
 
