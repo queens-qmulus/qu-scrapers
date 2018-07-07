@@ -15,5 +15,6 @@ retrying = "*"
 lxml = "*"
 "flake8" = "*"
 pyyaml = "*"
+pygithub = "*"
 
 [dev-packages]
