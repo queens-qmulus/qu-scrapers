@@ -7,7 +7,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 
 import quartzscrapers as qs
 
-GITHUB_TOKEN = os.environ['GITHUB_TOKEN']
+from quartzscrapers.scrapers.utils.config import GITHUB_TOKEN
 
 
 def run_job(scraper):
@@ -104,8 +104,7 @@ def write_files(path_in, path_out, files):
     with open(path_out, 'w') as merged_file:
         for file in files:
             with open('{}/{}'.format(path_in, file), 'r') as f:
-
-                # Flatten the raw JSON files, which are nested
+                # Flatten nested, raw JSON files
                 merged_file.write(
                     f.read().replace('\n', '').replace('  ', '') + '\n')
 
