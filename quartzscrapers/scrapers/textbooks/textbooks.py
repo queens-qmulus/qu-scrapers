@@ -1,3 +1,10 @@
+"""
+quartzscrapers.scrapers.textbooks.textbooks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This module contains the Textbooks class scraper for parsing textbook data.
+"""
+
 import re
 from urllib.parse import urljoin
 from collections import OrderedDict
@@ -11,12 +18,11 @@ from .textbooks_helpers import (
 
 
 class Textbooks:
-    '''
-    A scraper for Queen's textbooks.
+    """A scraper for Queen's textbooks.
 
     Queen's textbooks are located at the Queen's Campus boookstore.
-    Current website: 'https://www.campusbookstore.com'
-    '''
+    Current website: <https://www.campusbookstore.com>.
+    """
 
     host = 'https://www.campusbookstore.com'
     scraper = Scraper()
@@ -24,8 +30,11 @@ class Textbooks:
 
     @staticmethod
     def scrape(location='./dumps/textbooks'):
-        '''Update database records for textbooks scraper'''
+        """Scrape textbook information to JSON files.
 
+        Args:
+            location (optional): String location output files.
+        """
         Textbooks.logger.info('Starting Textbooks scrape')
 
         # course department codes, such as CISC, ANAT, PHAR, etc..
@@ -33,7 +42,7 @@ class Textbooks:
 
         for department in departments:
             try:
-                Textbooks.logger.debug('Course Department: {dep}'.format(dep=department))
+                Textbooks.logger.debug('Course Department: %s', department)
 
                 course_rel_urls = Textbooks._get_course_rel_urls(
                     'textbooks/search-engine/results', department
@@ -50,30 +59,33 @@ class Textbooks:
                             course_page, course_url)
 
                         if not course_data:
-                            Textbooks.logger.debug('** No course data available')
+                            Textbooks.logger.debug('No course data available')
                         else:
-                            cd = course_data[0]
+                            data = course_data[0]
                             term = ''
 
                             if len(course_data) == 1:
-                                term = cd['term']
+                                term = data['term']
                             else:
                                 term = 'Multiple terms'
 
-                            Textbooks.logger.debug('Course: {dep}{code} ({term} {year})'.format(
-                                dep=cd['department'],
-                                code=cd['course_code'],
+                            str_course = '{dep}{code} ({term} {year})'.format(
+                                dep=data['department'],
+                                code=data['course_code'],
                                 term=term,
-                                year=cd['year']
-                            ))
+                                year=data['year']
+                            )
 
-                        Textbooks.logger.debug('Course Link: {}'.format(course_url))
+                            Textbooks.logger.debug(str_course)
+
+                        Textbooks.logger.debug('Course Link: %s', course_url)
 
                         textbooks = course_page.find_all(
                             'div', 'textbookHolder'
                         )
 
-                        Textbooks.logger.debug('{} textbook(s) found'.format(len(textbooks)))
+                        Textbooks.logger.debug(
+                            '%s textbook(s) found', len(textbooks))
 
                         for textbook in textbooks:
                             try:
@@ -85,8 +97,8 @@ class Textbooks:
 
                                 Textbooks.scraper.wait()
 
-                            except Exception as ex:
-                                Textbooks.scraper.handle_error(ex, 'scrape')
+                            except Exception:
+                                Textbooks.scraper.handle_error()
 
                         if course_data or textbook_data:
                             save_textbook_data(
@@ -99,24 +111,18 @@ class Textbooks:
                         Textbooks.logger.debug('Textbook data saved')
                         Textbooks.scraper.wait()
 
-                    except Exception as ex:
-                        Textbooks.scraper.handle_error(ex, 'scrape')
+                    except Exception:
+                        Textbooks.scraper.handle_error()
 
-            except Exception as ex:
-                Textbooks.scraper.handle_error(ex, 'scrape')
+            except Exception:
+                Textbooks.scraper.handle_error()
 
         Textbooks.logger.info('Completed Textbooks scrape')
 
     @staticmethod
     def _get_departments(relative_url):
-        '''
-        Get list of department codes.
-
-        Such department codes are: 'CISC', 'ANAT', 'PHAR', etc.
-
-        Returns:
-            List[String]
-        '''
+        # Get list of department codes.
+        # Such department codes are: 'CISC', 'ANAT', 'PHAR', etc.
 
         campus_bookstore_url = urljoin(Textbooks.host, relative_url)
         soup = Textbooks.scraper.http_request(campus_bookstore_url)
@@ -128,22 +134,19 @@ class Textbooks:
 
     @staticmethod
     def _get_course_rel_urls(relative_url, department):
-        '''
-        Get list of course relative URLs. This is done using the website's
-        search bar. Department codes are inputted into the search bar and the
-        resulting response has a list of courses related to the department.
+        # Get list of course relative URLs.
 
-        Note that some results will have courses unrelated to the department.
-        For example, a department code of 'EG' will have course code results
-        of 'ENGL', 'ENE', etc. For data integrity, this is filtered.
+        # This is done using the website's search bar. Department codes are
+        # inputted into the search bar and the resulting response has a list of
+        # courses related to the department.
 
-        Returns:
-            List[String]
-        '''
-
+        # Note that some results will have courses unrelated to the department.
+        # For example, a department code of 'EG' will have course code results
+        # of 'ENGL', 'ENE', etc. For data integrity, this is filtered.
         course_rel_urls = []
         department_url = urljoin(Textbooks.host, relative_url)
-        soup = Textbooks.scraper.http_request(department_url, params=dict(q=department))
+        soup = Textbooks.scraper.http_request(
+            department_url, params=dict(q=department))
 
         # Use regex to filter textbooks having the right department substring
         regex = department + '[0-9]+'
@@ -152,7 +155,7 @@ class Textbooks:
         courses_all = soup.find_all('h3')
         courses = [c for c in courses_all if re.search(regex, c.text)]
 
-        Textbooks.logger.debug('{n} course(s) found'.format(n=len(courses)))
+        Textbooks.logger.debug('%s course(s) found', len(courses))
 
         for course in courses:
             try:
@@ -163,20 +166,14 @@ class Textbooks:
 
                 course_rel_urls.append(course_rel_url)
 
-            except Exception as ex:
-                Textbooks.scraper.handle_error(ex, '_get_course_rel_urls')
+            except Exception:
+                Textbooks.scraper.handle_error()
 
         return course_rel_urls
 
     @staticmethod
     def _get_course_page(course_rel_url):
-        '''
-        Get HTML of course webpage given a course relative URL.
-
-        Returns:
-            Tuple[bs4.element.Tag, String]
-        '''
-
+        # Get HTML of course webpage given a course relative URL.
         course_url = urljoin(Textbooks.host, course_rel_url)
         soup = Textbooks.scraper.http_request(course_url)
 
@@ -184,18 +181,13 @@ class Textbooks:
 
     @staticmethod
     def _parse_course_data(course_page, course_url):
-        '''
-        Parse course data from course page
-
-        Returns:
-            Object
-        '''
+        # Parse course data from course page.
 
         def split_string(string):
-            '''Separates an alphanumeric string
+            """Separates an alphanumeric string
 
             E.g: WINTER18 becomes WINTER, [18]
-            '''
+            """
 
             # some phrases could have multiple hyphens, like
             # 'COMM181-001,-002'. Separate word from num to get
@@ -214,15 +206,15 @@ class Textbooks:
             return word, nums
 
         def clean_term(term):
-            '''Cleans parsed term.
+            """Clean parsed term.
 
             Current known dirty terms:
             - SUM
             - LSUM, LWIN, LSPRING,
             - SPSU
             - FW
-            '''
-            TERM_MAP = {
+            """
+            term_map = {
                 'WIN': 'Winter',
                 'SUM': 'Summer',
                 'SPSU': 'Spring,Summer',
@@ -231,7 +223,7 @@ class Textbooks:
 
             # remove leading 'L' from 'LSUM', 'LWIN', etc
             term = term.lstrip('L')
-            return TERM_MAP.get(term, term).split(',')
+            return term_map.get(term, term).split(',')
 
         course_list = []
         regex = re.compile('[()]')
@@ -247,7 +239,8 @@ class Textbooks:
         # strips '(' and ')' and turns (WINTER2018) WINTER and 2018
         # CONT courses have 'CTE' trailing their course codes, such as
         # LWIN18CTE, which is stripped
-        term_raw, year_raw = split_string(regex.sub('', year_term).strip('CTE'))
+        term_raw, year_raw = split_string(
+            regex.sub('', year_term).strip('CTE'))
 
         terms = clean_term(term_raw)
         year = year_raw[0]
@@ -284,12 +277,7 @@ class Textbooks:
 
     @staticmethod
     def _parse_textbook_data(textbook):
-        '''
-        Parse textbook data from course page
-
-        Returns:
-            Object
-        '''
+        # Parse textbook data from course page.
 
         # === Info retrieved internally ===
         image_ref = urljoin(
@@ -301,10 +289,12 @@ class Textbooks:
         status_raw = textbook.find('dd', 'textbookStatus')
         status = status_raw.text.strip() if status_raw else None
 
-        isbn_13 = textbook.find('dt', text=re.compile('ISBN')
-            ).next_sibling.next_sibling.text.strip()
+        isbn_13 = (
+            textbook.find('dt', text=re.compile('ISBN'))
+            .next_sibling.next_sibling.text.strip()
+        )
 
-        Textbooks.logger.debug('Textbook ISBN: {isbn}'.format(isbn=isbn_13))
+        Textbooks.logger.debug('Textbook ISBN: %s', isbn_13)
 
         # may need both new and old prices, or just new prices (or none)
         prices = textbook.find_all('dd', 'textbookPrice')
@@ -312,10 +302,10 @@ class Textbooks:
 
         if prices:
             if len(prices) > 0 and '$' in prices[0].text:
-                price_new = float(prices[0].text.strip()[1:])
+                price_new = float(prices[0].text.strip().replace(',', '')[1:])
 
             if len(prices) > 1 and '$' in prices[1].text:
-                price_used = float(prices[1].text.strip()[1:])
+                price_used = float(prices[1].text.strip().replace(',', '')[1:])
 
         # == Info retrieved externally (via Google Books API) ==
         google_books_info = get_google_books_info(isbn_13, Textbooks.scraper)
@@ -356,4 +346,3 @@ class Textbooks:
         }
 
         return data
-

@@ -1,16 +1,27 @@
+"""
+tasks
+~~~~~
+
+This modules handles the scheduled tasks of each scraper, along with automating
+the exports of their data to GitHub.
+"""
+
 import os
 import time
 
 import github
-
 from apscheduler.schedulers.blocking import BlockingScheduler
 
 import quartzscrapers as qs
-
 from quartzscrapers.scrapers.utils.config import GITHUB_TOKEN
 
 
 def run_job(scraper):
+    """Execute a given scraper and push contents to Github server.
+
+    Args:
+        scraper: A scraper object.
+    """
     start_time = time.time()
     scraper.scrape()
 
@@ -19,16 +30,17 @@ def run_job(scraper):
 
 
 def init_jobs():
+    """Initialize scraper jobs."""
     # Execute every Sunday at 2:00am
-    scheduler.add_job(
+    SCHEDULER.add_job(
         run_job, 'cron', day_of_week='sun', hour=2, args=[qs.News])
 
     # Execute the first Sunday of every month at 2:00am
-    scheduler.add_job(
+    SCHEDULER.add_job(
         run_job, 'cron', day='sun', hour=2, args=[qs.Buildings])
 
     # Execute the first Sunday every August and December at 2:00am
-    scheduler.add_job(
+    SCHEDULER.add_job(
         run_job, 'cron', month='8,12', day='sun', hour=2, args=[qs.Textbooks])
 
     # Note: According to Queen's ITS, standard maintenance periods are
@@ -36,30 +48,36 @@ def init_jobs():
     # Source: http://www.queensu.ca/its/apps/notices/myqueensu_outage.php
 
     # Execute the first Monday every August and December at 1:00am
-    scheduler.add_job(
+    SCHEDULER.add_job(
         run_job, 'cron', month='8,12', day='mon', hour=1, args=[qs.Courses])
 
 
 def init_jobs_dev():
+    """Initialize scraper jobs (for testing only)."""
     # Execute every day at 1:00am
-    scheduler.add_job(run_job, 'cron', hour=1, args=[qs.News])
-    scheduler.add_job(run_job, 'cron', hour=1, args=[qs.Buildings])
-    scheduler.add_job(run_job, 'cron', hour=1, args=[qs.Textbooks])
-    scheduler.add_job(run_job, 'cron', hour=1, args=[qs.Courses])
+    SCHEDULER.add_job(run_job, 'cron', hour=1, args=[qs.News])
+    SCHEDULER.add_job(run_job, 'cron', hour=1, args=[qs.Buildings])
+    SCHEDULER.add_job(run_job, 'cron', hour=1, args=[qs.Textbooks])
+    SCHEDULER.add_job(run_job, 'cron', hour=1, args=[qs.Courses])
 
 
 def push_to_github(scraper_name='Buildings'):
+    """Aggregate files into one compiled file and automate a push to GitHub.
+
+    Args:
+        scraper_name (optional): Name of the passed scraper class.
+    """
     repo = github.Github(GITHUB_TOKEN).get_user().get_repo('qmulus-test')
     files = merge_files(scraper_name)
 
-    for file in files:
-        output = '/{}'.format(file.split('/')[-1])
-        message = 'Export dataset: {}'.format(file.split('/')[-1][:-5])
+    for filename in files:
+        output = '/{}'.format(filename.split('/')[-1])
+        message = 'Export dataset: {}'.format(filename.split('/')[-1][:-5])
 
-        with open(file, 'r') as f:
+        with open(filename, 'r') as file:
             try:
                 file_repo = repo.get_file_contents(output)
-                file_disk = f.read()
+                file_disk = file.read()
 
                 # Only commit if there are changes to push
                 if file_repo.decoded_content.decode("utf-8") != file_disk:
@@ -67,12 +85,28 @@ def push_to_github(scraper_name='Buildings'):
                     repo.update_file(output, message, file_disk, file_repo.sha)
 
             # file doesn't exist, meaning it's a new file to commit
-            except github.UnknownObjectException as ex:
+            except github.UnknownObjectException:
                 print('New file detected. Creating for commit...')
-                repo.create_file(output, message, f.read())
+                repo.create_file(output, message, file.read())
 
 
 def merge_files(filename, filepath='./dumps'):
+    """Compile multiple files from an executed scrape into one compiled file.
+
+    Access the resulting directory of a scraper's JSON files and consolidate
+    into one compiled JSON file. Sub-directories will be shallowly accessed
+    to create compiled files of the sub-directory.
+
+    E.g: For courses, courses/sections, courses/departments, courses/courses
+    result in sections.json, departments.json and courses.json.
+
+    Args:
+        filename: String of the directory in question.
+        filepath (optional): Location of the directory in question.
+
+    Returns:
+        A list of the locations of the resulting compiled files.
+    """
     filepaths = []
     file_dir = './data'
     filepath = '{}/{}'.format(filepath, filename.lower())
@@ -101,20 +135,27 @@ def merge_files(filename, filepath='./dumps'):
 
 
 def write_files(path_in, path_out, files):
+    """Compiles multiple files into one file.
+
+    Args:
+        path_in: Input location of directory of files.
+        path_out: Output location to write the compiled file.
+        files: List of filenames to repeat this process for.
+    """
     with open(path_out, 'w') as merged_file:
-        for file in files:
-            with open('{}/{}'.format(path_in, file), 'r') as f:
+        for filename in files:
+            with open('{}/{}'.format(path_in, filename), 'r') as file:
                 # Flatten nested, raw JSON files
                 merged_file.write(
-                    f.read().replace('\n', '').replace('  ', '') + '\n')
+                    file.read().replace('\n', '').replace('  ', '') + '\n')
 
 
 if __name__ == '__main__':
-    scheduler = BlockingScheduler()
+    SCHEDULER = BlockingScheduler()
     init_jobs_dev()
 
     try:
         print('Running jobs')
-        scheduler.start()
+        SCHEDULER.start()
     except (KeyboardInterrupt, SystemExit):
         pass

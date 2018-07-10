@@ -1,15 +1,24 @@
+"""
+quartzscrapers.scrapers.news.journal
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This module contains the Journal class scraper for parsing news data.
+"""
+
 import re
-import pendulum
 from urllib.parse import urljoin
+
+import pendulum
 
 from ..utils import Scraper
 from .news_helpers import get_urls_on_depth, get_article_page, save_article
 
 
 class Journal:
-    '''
-    Scraper for Queen's Journal news source.
-    '''
+    """Scraper for Queen's Journal news source.
+
+    Site is currently located at <https://www.queensjournal.ca>.
+    """
 
     host = 'http://www.queensjournal.ca'
     slug = 'queensjournal'
@@ -18,14 +27,12 @@ class Journal:
 
     @staticmethod
     def scrape(deep=False, location='./dumps/news'):
-        '''Parse information custom to The Queen's Journal
+        """Scrape information custom to The Queen's Journal.
 
-        Parameters:
-            deep: Either does a scrape of just the curent year, or of every
-                  archive
-            location: Defines where to save JSON file
-        '''
-
+        Args:
+            deep: Bool for a scrape of just the curent year, or every archive.
+            location (optional): String location of output files.
+        """
         Journal.logger.info('Starting Journal scrape')
 
         # QJ divides articles by archive year
@@ -34,18 +41,18 @@ class Journal:
 
         # Crawl each archived year
         for year_rel_url in year_rel_urls:
-            Journal.logger.debug('ARCHIVE: {url}'.format(url=year_rel_url))
+            Journal.logger.debug('ARCHIVE: %s', year_rel_url)
 
             try:
                 # get number of pages a particular archive year needs to crawl
                 # along with soup reference to continue page crawl
                 num_pages = Journal._get_num_pages(year_rel_url)
 
-                Journal.logger.debug('Total Pages: {num_pages}'.format(num_pages=num_pages))
+                Journal.logger.debug('Total Pages: %s', num_pages)
 
                 # Crawl each page for each year
                 for page_index in range(num_pages):
-                    Journal.logger.debug('Page {page_num}'.format(page_num=(page_index + 1)))
+                    Journal.logger.debug('Page %s', page_index + 1)
 
                     try:
                         article_rel_urls = Journal._get_article_rel_urls(
@@ -76,28 +83,24 @@ class Journal:
                                     )
 
                                 Journal.scraper.wait()
-                            except Exception as ex:
-                                Journal.scraper.handle_error(ex, 'scrape')
+                            except Exception:
+                                Journal.scraper.handle_error()
 
-                    except Exception as ex:
-                        Journal.scraper.handle_error(ex, 'scrape')
+                    except Exception:
+                        Journal.scraper.handle_error()
 
-            except Exception as ex:
-                Journal.scraper.handle_error(ex, 'scrape')
+            except Exception:
+                Journal.scraper.handle_error()
 
         Journal.logger.info('Completed Journal scrape')
 
     @staticmethod
     def _get_archive_years():
-        '''Get list of relative archive year URLs.
+        # Get list of relative archive year URLs.
 
-        If a deep scrape is initiated, scraper will scrape every single archive
-        years (every possible thing to scrape). Otherwise, it scrapes just the
-        latest year.
-
-        Returns:
-            List[String]
-        '''
+        # If a deep scrape is initiated, scraper will scrape every single
+        # archive years (every possible thing to scrape). Otherwise, it
+        # scrapes just the latest year.
 
         host_url = urljoin(Journal.host, 'news')
         soup = Journal.scraper.http_request(host_url)
@@ -107,14 +110,9 @@ class Journal:
 
         return year_rel_urls
 
-
     @staticmethod
     def _get_num_pages(relative_url):
-        '''Request archive year URL and parse number of pages to crawl
-
-        Returns:
-            Int
-        '''
+        # Request archive year URL and parse number of pages to crawl.
 
         year_url = urljoin(Journal.host, relative_url)
         soup = Journal.scraper.http_request(year_url)
@@ -125,21 +123,18 @@ class Journal:
         # get last two digits from url of last page, i.e;
         # '/story/archive/news/2012/?page=13' results in 13
         index = page_url.rfind('=')
-        num_pages = int(page_url[(index + 1):]) + 1 # +1 to go from 0 to n
+        num_pages = int(page_url[(index + 1):]) + 1  # +1 to go from 0 to n
 
         return num_pages
 
     @staticmethod
     def _get_article_rel_urls(relative_url, page_index):
-        '''Gets list of relative URLs for articles.
+        # Gets list of relative URLs for articles. Queen's Journal displays
+        # 20 articles per page.
 
-        Queen's Journal displays 20 articles per page.
-
-        Returns:
-            List[String]
-        '''
         year_url = urljoin(Journal.host, relative_url)
-        soup =  Journal.scraper.http_request(year_url, params=dict(page=page_index))
+        soup = Journal.scraper.http_request(
+            year_url, params=dict(page=page_index))
 
         articles = soup.find_all('div', 'node-story')
         article_rel_urls = (
@@ -150,12 +145,6 @@ class Journal:
 
     @staticmethod
     def _parse_article_data(article_page, article_url):
-        '''Parse data from article page tags
-
-        Returns:
-            Object
-        '''
-
         updated_iso = None
         regex_str = 'Last Updated: '
 

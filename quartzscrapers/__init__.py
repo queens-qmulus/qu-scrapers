@@ -1,8 +1,24 @@
-import yaml
+"""
+Quartz Scrapers
+~~~~~~~~~~~~~~~
+
+Quartz-scrapers is a compilation of scraper modules that aggregate everything
+related to Queen's University. Basic usage is as simple as:
+
+  >>> import quartzscrapers as qs
+  >>> qs.Courses.scrape()
+
+Full documentation is as <http://placeholder.io>.
+"""
+
+
 import logging.config
 
-from quartzscrapers.scrapers.buildings import Buildings
+import yaml
 
+from quartzscrapers.scrapers.buildings import Buildings
+from quartzscrapers.scrapers.textbooks import Textbooks
+from quartzscrapers.scrapers.courses import Courses
 from quartzscrapers.scrapers.news import (
     News,
     Journal,
@@ -10,17 +26,13 @@ from quartzscrapers.scrapers.news import (
     AlumniReview,
     SmithMagazine,
     JurisDiction,
+)
+
+FILEPATH = './quartzscrapers'
+
+with open('{}/logging.yaml'.format(FILEPATH), 'r') as file:
+    CONFIG = file.read().format(
+        format='simple', filepath='{}/logs'.format(FILEPATH), prefix=''
     )
 
-from quartzscrapers.scrapers.textbooks import Textbooks
-
-from quartzscrapers.scrapers.courses import Courses
-
-filepath = './quartzscrapers'
-
-with open('{}/logging.yaml'.format(filepath), 'r') as file:
-    config = file.read().format(
-        format='simple', filepath='{}/logs'.format(filepath), prefix=''
-    )
-
-logging.config.dictConfig(yaml.safe_load(config))
+logging.config.dictConfig(yaml.safe_load(CONFIG))

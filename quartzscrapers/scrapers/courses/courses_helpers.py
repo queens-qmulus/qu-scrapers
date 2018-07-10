@@ -1,7 +1,18 @@
-import yaml
+"""
+quartzscrapers.scrapers.courses.courses_helpers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This module contains auxiliary functions for the courses module.
+"""
+
 import logging.config
 
+import yaml
+import pendulum
+
+
 def setup_logging():
+    """Initialize logging."""
     filepath = './quartzscrapers'
 
     with open('{}/logging.yaml'.format(filepath), 'r') as file:
@@ -15,20 +26,42 @@ def setup_logging():
 
     return logging.getLogger(__name__)
 
+
+def parse_datetime(datetime):
+    """Parse datetimes in ISO format"""
+    return pendulum.parse(datetime, strict=False).isoformat().split('T')
+
+
 def save_department_data(department_data, scraper, location):
+    """Write department data to JSON file.
+
+    Args:
+        department_data: Dictionary of department data.
+        scraper: Base scraper object.
+        location: String location output files.
+    """
     filename = department_data['code']
     filepath = '{}/departments'.format(location)
 
     scraper.write_data(department_data, filename, filepath)
     scraper.logger.debug('Department data saved')
 
+
 def save_course_data(course_data, scraper, location):
+    """Write course data to JSON file.
+
+    Args:
+        course_data: Dictionary of course data.
+        scraper: Base scraper object.
+        location: String location output files.
+    """
     dept, code = course_data['department'], course_data['course_code']
     filename = '{dept}_{code}'.format(dept=dept, code=code)
     filepath = '{}/courses'.format(location)
 
     scraper.write_data(course_data, filename, filepath)
     scraper.logger.debug('Course data saved')
+
 
 def save_section_data(course_data, section_data, scraper, location):
     """Preprocess and save course section data to JSON.
@@ -42,6 +75,12 @@ def save_section_data(course_data, section_data, scraper, location):
     4 - academic_level
     5 - year
     6 - term
+
+    Args:
+        course_data: Dictionary of course data.
+        section_data: Dictionary of course section data.
+        scraper: Base scraper object.
+        location: String location output files.
     """
     year = course_data['year']
     term = course_data['term']

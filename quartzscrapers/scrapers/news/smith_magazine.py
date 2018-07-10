@@ -1,14 +1,23 @@
-import pendulum
+"""
+quartzscrapers.scrapers.news.smithmagazine
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This module contains the SmithMagazine class scraper for parsing news data.
+"""
+
 from urllib.parse import urljoin
+
+import pendulum
 
 from ..utils import Scraper
 from .news_helpers import get_urls_on_depth, get_article_page, save_article
 
 
 class SmithMagazine:
-    '''
-    Scraper for Smith Magazine news source.
-    '''
+    """ Scraper for Smith Magazine news source.
+
+    Site is currently located at <https://smith.queensu.ca/magazine>.
+    """
 
     host = 'https://smith.queensu.ca'
     slug = 'smithmagazine'
@@ -17,10 +26,12 @@ class SmithMagazine:
 
     @staticmethod
     def scrape(deep=False, location='./dumps/news'):
-        '''
-        Parse information custom to Smith Magazine.
-        '''
+        """Scrape information custom to Smith Magazine.
 
+        Args:
+            deep: Bool for a scrape of just the curent year, or every archive.
+            location (optional): String location of output files.
+        """
         SmithMagazine.logger.info('Starting SmithMagazine scrape')
 
         try:
@@ -31,16 +42,19 @@ class SmithMagazine:
             )
 
             for magazine_issue_rel_url in magazine_issue_rel_urls:
-                SmithMagazine.logger.debug('ARCHIVE: {url}'.format(url=magazine_issue_rel_url))
+                SmithMagazine.logger.debug(
+                    'ARCHIVE: %s', magazine_issue_rel_url)
 
                 try:
                     article_sections = SmithMagazine._get_article_sections(
-                            magazine_issue_rel_url)
+                        magazine_issue_rel_url)
 
                     for article_section in article_sections:
-                        title = article_section.find('h2', 'block-title').text.strip()
+                        title = article_section.find(
+                            'h2', 'block-title').text.strip()
 
-                        SmithMagazine.logger.debug('Article Section: {section}'.format(section=title))
+                        SmithMagazine.logger.debug(
+                            'Article Section: %s', title)
 
                         article_rel_urls = SmithMagazine._get_article_rel_urls(
                             article_section)
@@ -54,8 +68,10 @@ class SmithMagazine:
                                     article_rel_url
                                 )
 
-                                article_data = SmithMagazine._parse_article_data(
-                                    article_page, article_url)
+                                article_data = (
+                                    SmithMagazine._parse_article_data(
+                                        article_page, article_url)
+                                )
 
                                 if article_data:
                                     save_article(
@@ -66,25 +82,20 @@ class SmithMagazine:
 
                                 SmithMagazine.scraper.wait()
 
-                            except Exception as ex:
-                                SmithMagazine.scraper.handle_error(ex, 'scrape')
+                            except Exception:
+                                SmithMagazine.scraper.handle_error()
 
-                except Exception as ex:
-                    SmithMagazine.scraper.handle_error(ex, 'scrape')
+                except Exception:
+                    SmithMagazine.scraper.handle_error()
 
-        except Exception as ex:
-            SmithMagazine.scraper.handle_error(ex, 'scrape')
+        except Exception:
+            SmithMagazine.scraper.handle_error()
 
         SmithMagazine.logger.info('Completed SmithMagazine scrape')
 
     @staticmethod
     def _get_magazine_issues():
-        '''
-        Request URL for all archived magazine issues.
-
-        Returns:
-            List[String]
-        '''
+        # Request URL for all archived magazine issues.
 
         magazine_archive_url = urljoin(SmithMagazine.host, 'magazine/archive')
         soup = SmithMagazine.scraper.http_request(magazine_archive_url)
@@ -98,18 +109,13 @@ class SmithMagazine:
 
     @staticmethod
     def _get_article_sections(relative_url):
-        '''
-        Request magazine URL and parse BeautifulSoup HTML tag of each magazine
-        section. Each magazine has varying article sections, such as
-        'Features', 'Profiles', etc. Each section lists a series of article
-        links.
-
-        Returns:
-            List[bs4.element.Tag]
-        '''
+        # Request magazine URL and parse BeautifulSoup HTML tag of each
+        # magazine section. Each magazine has varying article sections, such as
+        # 'Features', 'Profiles', etc. Each section lists a series of article
+        # links.
 
         issue_url = urljoin(SmithMagazine.host, relative_url)
-        soup =  SmithMagazine.scraper.http_request(issue_url)
+        soup = SmithMagazine.scraper.http_request(issue_url)
 
         article_sections = (
             soup.find('div', 'group-right').find_all('div', 'field')
@@ -119,12 +125,6 @@ class SmithMagazine:
 
     @staticmethod
     def _get_article_rel_urls(article_section):
-        '''
-        Extract article relative URL from BeautifulSoup HTML tag.
-
-        Returns:
-            String
-        '''
         articles = article_section.find_all('span', 'field-content')
         article_rel_urls = [article.find('a')['href'] for article in articles]
 
@@ -132,20 +132,13 @@ class SmithMagazine:
 
     @staticmethod
     def _parse_article_data(article_page, article_url):
-        '''
-        Parse data from article page tags
-
-        Returns:
-            Object
-        '''
-
         title = article_page.find('div', 'field-name-title').text.strip()
 
         # Smith Magazine only shows issue season and year (Winter 217)
         # For the sake of news consistency, parse ISO only for the year.
         # It will always say  January 1st, with the respective year
         published = (article_page.find('div', 'field-name-field-issue')
-                                 .find('div', 'field-item').text.strip())
+                     .find('div', 'field-item').text.strip())
         published_iso = pendulum.parse(published[-4:]).isoformat()
 
         authors_raw = article_page.find('div', 'field-name-field-author')

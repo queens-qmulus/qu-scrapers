@@ -16,5 +16,6 @@ lxml = "*"
 pyyaml = "*"
 pygithub = "*"
 backoff = "*"
+pylint = "*"
 
 [dev-packages]

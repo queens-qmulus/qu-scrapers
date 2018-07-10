@@ -1,3 +1,11 @@
+"""
+quartzscrapers.scrapers.news.news
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This module contains the News class scraper which manages all sub-classe
+scrapers for news parsing.
+"""
+
 from .journal import Journal
 from .gazette import Gazette
 from .alumnireview import AlumniReview
@@ -7,7 +15,7 @@ from ..utils import Scraper
 
 
 class News:
-    '''Scraper class for Queen's news articles.
+    """Scraper class for Queen's news articles.
 
     Queen's consists of several sources for news. As such, several subclasses
     exist to aggregate and normalize information into this superclass.
@@ -19,7 +27,7 @@ class News:
     Queen's Alumni Review:  http://queensu.ca/gazette/alumnireview/stories
     Smith Magazine:         https://smith.queensu.ca/magazine/archive
     Juris Diction:          http://www.juris-diction.ca
-    '''
+    """
 
     logger = Scraper().logger
 
@@ -33,7 +41,7 @@ class News:
 
     @staticmethod
     def scrape(deep=False, location='./dumps/news'):
-        '''Update database records for news scraper'''
+        """Update database records for news scraper"""
 
         News.logger.info('Starting News scrape')
 
