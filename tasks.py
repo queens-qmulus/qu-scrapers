@@ -61,11 +61,11 @@ def init_jobs_dev():
     SCHEDULER.add_job(run_job, 'cron', hour=1, args=[qs.Courses])
 
 
-def push_to_github(scraper_name='Buildings'):
+def push_to_github(scraper_name):
     """Aggregate files into one compiled file and automate a push to GitHub.
 
     Args:
-        scraper_name (optional): Name of the passed scraper class.
+        scraper_name: Name of the passed scraper class.
     """
     repo = github.Github(GITHUB_TOKEN).get_user().get_repo('qmulus-test')
     files = merge_files(scraper_name)
