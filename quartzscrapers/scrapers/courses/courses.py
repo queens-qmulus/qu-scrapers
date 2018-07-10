@@ -12,7 +12,9 @@ from threading import Thread
 from collections import OrderedDict
 
 import pendulum
-import chromedriver_binary # noqa Adds chromedriver_binary to path
+
+# Adds chromedriver_binary to path
+import chromedriver_binary  # pylint: disable=unused-import
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
@@ -101,8 +103,6 @@ class CourseSession:
         departments = self._get_departments(soup, letter)
 
         self.logger.debug('Letter %s has %s depts.', letter, len(departments))
-
-        import pdb; pdb.set_trace()
 
         # For each department under a certain letter search
         for department in departments:
