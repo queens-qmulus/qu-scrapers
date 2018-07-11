@@ -11,10 +11,9 @@ from queue import Queue
 from threading import Thread
 from collections import OrderedDict
 
-import pendulum
-
 # Adds chromedriver_binary to path
 import chromedriver_binary  # pylint: disable=unused-import
+import pendulum
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
