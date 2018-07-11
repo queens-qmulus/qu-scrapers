@@ -150,7 +150,7 @@ class Buildings:
         polygon = get_polygon(building['coords'], campus)
 
         data = {
-            '_parameter': param,
+            'id': param,
             'code': code,
             'accessibility': is_accessible,
             'name': name,
