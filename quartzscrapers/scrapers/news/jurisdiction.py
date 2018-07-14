@@ -168,6 +168,6 @@ class JurisDiction:
             'authors': authors,
             'content': content,
             'content_raw': content_raw,
-            }
+        }
 
         return data

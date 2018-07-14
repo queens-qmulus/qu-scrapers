@@ -618,7 +618,7 @@ class CourseSession:
             'academic_org': academic_org,
             'units': units,
             'CEAB': ceab_data,
-            }
+        }
 
         # retain key-value order of dictionary
         return OrderedDict(data)
@@ -750,18 +750,18 @@ class CourseSession:
                 combined_with.append(combined_section_number)
 
         section_data = {
-            'section_name:': section_name,
-            'section_type:': section_type,
-            'section_number:': section_number,
+            'section_name': section_name,
+            'section_type': section_type,
+            'section_number': section_number,
             'class_number': class_number,
-            'dates:': course_dates,
-            'combined_with:': combined_with,
-            'enrollment_capacity:': enrollment_capacity,
-            'enrollment_total:': enrollment_total,
-            'waitlist_capacity:': waitlist_capacity,
-            'waitlist_total:': waitlist_total,
-            'last_updated:': pendulum.now().isoformat(),
-            }
+            'dates': course_dates,
+            'combined_with': combined_with,
+            'enrollment_capacity': enrollment_capacity,
+            'enrollment_total': enrollment_total,
+            'waitlist_capacity': waitlist_capacity,
+            'waitlist_total': waitlist_total,
+            'last_updated': pendulum.now().isoformat(),
+        }
 
         course_data = {
             'year': year,
@@ -772,6 +772,6 @@ class CourseSession:
             'units': basic_data.get('units', ''),
             'campus': basic_data.get('campus', ''),
             'academic_level': basic_data.get('academic_level', ''),
-            }
+        }
 
         return OrderedDict(course_data), OrderedDict(section_data)

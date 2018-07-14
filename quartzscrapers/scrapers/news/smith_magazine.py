@@ -159,6 +159,6 @@ class SmithMagazine:
             'authors': authors,
             'content': content,
             'content_raw': str(content_raw),
-            }
+        }
 
         return data
