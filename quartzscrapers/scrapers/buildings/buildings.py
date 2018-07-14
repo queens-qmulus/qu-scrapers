@@ -6,8 +6,8 @@ This module contains the Buildings class scraper for parsing building data.
 """
 
 import re
-
 from urllib.parse import urljoin
+from collections import OrderedDict
 
 from ..utils import Scraper
 from .buildings_helpers import get_building_coords
@@ -161,4 +161,4 @@ class Buildings:
             'polygon': polygon,
         }
 
-        return data
+        return OrderedDict(data)
