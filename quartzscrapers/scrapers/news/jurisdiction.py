@@ -5,6 +5,8 @@ quartzscrapers.scrapers.news.jurisdiction
 This module contains the JurisDiction class scraper for parsing news data.
 """
 
+from collections import OrderedDict
+
 from ..utils import Scraper
 from .news_helpers import get_urls_on_depth, get_article_page, save_article
 
@@ -170,4 +172,4 @@ class JurisDiction:
             'content_raw': content_raw,
         }
 
-        return data
+        return OrderedDict(data)

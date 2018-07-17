@@ -6,6 +6,7 @@ This module contains the Journal class scraper for parsing news data.
 """
 
 import re
+from collections import OrderedDict
 from urllib.parse import urljoin
 
 import pendulum
@@ -184,4 +185,4 @@ class Journal:
             'content_raw': content_raw,
         }
 
-        return data
+        return OrderedDict(data)

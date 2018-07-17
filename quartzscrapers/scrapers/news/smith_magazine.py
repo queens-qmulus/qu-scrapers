@@ -5,6 +5,7 @@ quartzscrapers.scrapers.news.smithmagazine
 This module contains the SmithMagazine class scraper for parsing news data.
 """
 
+from collections import OrderedDict
 from urllib.parse import urljoin
 
 import pendulum
@@ -161,4 +162,4 @@ class SmithMagazine:
             'content_raw': str(content_raw),
         }
 
-        return data
+        return OrderedDict(data)
