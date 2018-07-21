@@ -37,8 +37,7 @@ class Courses:
     its credentials via the cookies returned from a login.
     """
 
-    # LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    LETTERS = 'A'
+    LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
     @staticmethod
     def scrape(location='./dumps/courses'):
