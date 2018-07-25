@@ -648,7 +648,7 @@ class CourseSession:
             'span',
             id='DERIVED_CLSRCH_DESCR200').text.strip().split(' - ')[1][:3]
         class_number = soup.find(
-            'span', id='SSR_CLS_DTL_WRK_CLASS_NBR').text.strip())
+            'span', id='SSR_CLS_DTL_WRK_CLASS_NBR').text.strip()
 
         # ======================== Meeting Information ========================
         course_dates = []
