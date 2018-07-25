@@ -756,10 +756,10 @@ class CourseSession:
         a_lvl = basic_data.get('academic_level', '')
         campus = basic_data.get('campus', '')
 
-        id = make_course_id(year, term, a_lvl, campus, dept, code, '-', False)
+        cid = make_course_id(year, term, a_lvl, campus, dept, code, '-', False)
 
         course_data = {
-            'id': id,
+            'id': cid,
             'year': year,
             'term': term,
             'department': dept,

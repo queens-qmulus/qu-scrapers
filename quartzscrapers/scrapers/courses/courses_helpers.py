@@ -32,7 +32,7 @@ def parse_datetime(datetime):
     return pendulum.parse(datetime, strict=False).isoformat().split('T')
 
 
-def make_course_id(year, term, a_lvl, campus, dept, code, d, isFile=True):
+def make_course_id(year, term, a_lvl, campus, dept, code, delim, is_file=True):
     """Creates unique identifier out of course data.
 
     Multiple courses with the same ID can exist. Such as MATH121 for main
@@ -55,22 +55,22 @@ def make_course_id(year, term, a_lvl, campus, dept, code, d, isFile=True):
         campus: Course campus.
         dept: Course department.
         code: Course code.
-        d: String for type of delimiter separate pieces of info.
-        isFile (optional): Bool that determines format of academic level.
+        delim: String for type of delimiter separate pieces of info.
+        is_file (optional): Bool that determines format of academic level.
     """
     campus, *_ = campus.split(' ')
 
     # E.g 1: "Non-Credit" => "Non_Credit" if for files
     # E.g 2: "Undergraduate Online" => "Undergraduate-Online" for regular id's
-    a_lvl = d.join(a_lvl.replace('-', ' ').split(' '))
+    a_lvl = delim.join(a_lvl.replace('-', ' ').split(' '))
 
-    if not isFile:
+    if not is_file:
         term = term.upper()[:2]
         campus = campus[0]
-        a_lvl = ''.join([word[0] for word in a_lvl.split(d)])
+        a_lvl = ''.join([word[0] for word in a_lvl.split(delim)])
 
     return '{year}{d}{term}{d}{a_lvl}{d}{campus}{d}{dept}{d}{code}'.format(
-        d=d,
+        d=delim,
         year=year,
         term=term,
         a_lvl=a_lvl,
