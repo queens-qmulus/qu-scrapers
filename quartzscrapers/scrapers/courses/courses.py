@@ -647,8 +647,8 @@ class CourseSession:
         section_number = soup.find(
             'span',
             id='DERIVED_CLSRCH_DESCR200').text.strip().split(' - ')[1][:3]
-        class_number = int(
-            soup.find('span', id='SSR_CLS_DTL_WRK_CLASS_NBR').text.strip())
+        class_number = soup.find(
+            'span', id='SSR_CLS_DTL_WRK_CLASS_NBR').text.strip())
 
         # ======================== Meeting Information ========================
         course_dates = []
@@ -743,7 +743,7 @@ class CourseSession:
             'tr', id=re.compile(r'trSCTN_CMBND\$[0-9]+_row')) or []
 
         for combined_row in combined_rows:
-            combined_section_number = int(combined_row.find(
+            combined_section_number = (combined_row.find(
                 'span', id=re.compile(r'CLASS_NAME\$')
             ).text.split('(')[1][:-1])
 
