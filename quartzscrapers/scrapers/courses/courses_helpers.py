@@ -32,6 +32,54 @@ def parse_datetime(datetime):
     return pendulum.parse(datetime, strict=False).isoformat().split('T')
 
 
+def make_course_id(year, term, a_lvl, campus, dept, code, d, isFile=True):
+    """Creates unique identifier out of course data.
+
+    Multiple courses with the same ID can exist. Such as MATH121 for main
+    campus, bader campus, or online. In order for a course listing to be
+    unique, these 6 datapoints must be distinct as a bundle:
+    1 - course code
+    2 - department
+    3 - campus
+    4 - academic_level
+    5 - year
+    6 - term
+
+    E.g: A formatted ID would be '2018_Summer_Graduate_Main_SOCY_895' if it
+    were a file, and '2018-Summer-Graduate-Main-SOCY-895' otherwise.
+
+    Args:
+        year: Course year.
+        term: Course term.
+        a_lvl: Course academic level
+        campus: Course campus.
+        dept: Course department.
+        code: Course code.
+        d: String for type of delimiter separate pieces of info.
+        isFile (optional): Bool that determines format of academic level.
+    """
+    campus, *_ = campus.split(' ')
+
+    # E.g 1: "Non-Credit" => "Non_Credit" if for files
+    # E.g 2: "Undergraduate Online" => "Undergraduate-Online" for regular id's
+    a_lvl = d.join(a_lvl.replace('-', ' ').split(' '))
+
+    if not isFile:
+        term = term.upper()[:2]
+        campus = campus[0]
+        a_lvl = ''.join([word[0] for word in a_lvl.split(d)])
+
+    return '{year}{d}{term}{d}{a_lvl}{d}{campus}{d}{dept}{d}{code}'.format(
+        d=d,
+        year=year,
+        term=term,
+        a_lvl=a_lvl,
+        campus=campus,
+        dept=dept,
+        code=code,
+    )
+
+
 def save_department_data(department_data, scraper, location):
     """Write department data to JSON file.
 
@@ -66,44 +114,23 @@ def save_course_data(course_data, scraper, location):
 def save_section_data(course_data, section_data, scraper, location):
     """Preprocess and save course section data to JSON.
 
-    Multiple courses with the same ID can exist. Such as MATH121 for main
-    campus, bader campus, or online. In order for a course listing to be
-    unique, these 6 datapoints must be distinct as a bundle:
-    1 - course code
-    2 - department
-    3 - campus
-    4 - academic_level
-    5 - year
-    6 - term
-
     Args:
         course_data: Dictionary of course data.
         section_data: Dictionary of course section data.
         scraper: Base scraper object.
         location: String location output files.
     """
-    year = course_data['year']
-    term = course_data['term']
-    campus, *_ = course_data['campus'].split(' ')
-
-    # "Undergraduate Online" => "Undergraduate_Online"
-    # "Non-Credit" => "Non_Credit"
-    academic_level = '_'.join(
-        course_data['academic_level'].replace('-', ' ').split(' ')
-    )
-
-    dept = course_data['department']
-    code = course_data['course_code']
 
     key = 'course_sections'
     filepath = '{}/sections'.format(location)
-    filename = '{year}_{term}_{academic_level}_{campus}_{dept}_{code}'.format(
-        year=year,
-        term=term,
-        academic_level=academic_level,
-        campus=campus,
-        dept=dept,
-        code=code,
+    filename = make_course_id(
+        course_data['year'],
+        course_data['term'],
+        course_data['academic_level'],
+        course_data['campus'],
+        course_data['department'],
+        course_data['course_code'],
+        '_',
     )
 
     scraper.update_data(course_data, section_data, key, filename, filepath)

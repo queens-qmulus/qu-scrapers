@@ -22,6 +22,7 @@ from ..utils.config import QUEENS_USERNAME, QUEENS_PASSWORD
 from .courses_helpers import (
     setup_logging,
     parse_datetime,
+    make_course_id,
     save_department_data,
     save_course_data,
     save_section_data,
@@ -602,6 +603,7 @@ class CourseSession:
         ceab_data = create_ceab_dict(soup)
 
         data = {
+            'id': '{}-{}'.format(department, course_code),
             'department': department,
             'course_code': course_code,
             'course_name': course_name,
@@ -748,6 +750,26 @@ class CourseSession:
             if combined_section_number != class_number:
                 combined_with.append(combined_section_number)
 
+        # Used for creating unique ID
+        code = basic_data.get('course_code', '')
+        dept = basic_data.get('department', '')
+        a_lvl = basic_data.get('academic_level', '')
+        campus = basic_data.get('campus', '')
+
+        id = make_course_id(year, term, a_lvl, campus, dept, code, '-', False)
+
+        course_data = {
+            'id': id,
+            'year': year,
+            'term': term,
+            'department': dept,
+            'course_code': code,
+            'course_name': basic_data.get('course_name', ''),
+            'units': basic_data.get('units', ''),
+            'campus': campus,
+            'academic_level': a_lvl,
+        }
+
         section_data = {
             'section_name': section_name,
             'section_type': section_type,
@@ -760,17 +782,6 @@ class CourseSession:
             'waitlist_capacity': waitlist_capacity,
             'waitlist_total': waitlist_total,
             'last_updated': pendulum.now().isoformat(),
-        }
-
-        course_data = {
-            'year': year,
-            'term': term,
-            'department': basic_data.get('department', ''),
-            'course_code': basic_data.get('course_code', ''),
-            'course_name': basic_data.get('course_name', ''),
-            'units': basic_data.get('units', ''),
-            'campus': basic_data.get('campus', ''),
-            'academic_level': basic_data.get('academic_level', ''),
         }
 
         return OrderedDict(course_data), OrderedDict(section_data)
