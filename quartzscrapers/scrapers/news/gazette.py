@@ -164,8 +164,11 @@ class Gazette:
         # showing two authors using 'with', such as 'By John with Alex'.
         # Gazette also includes author title such as 'Alex, Communications'.
         # Remove job title, and split by ' with ' to create authors array
+
+        # Note: AlumniReview's has a mistake of adding typos to their authors,
+        # such as "By By Lindy Mechefske"
         authors_raw = (article_page.find('div', 'story-byline')
-                       .text.strip()[3:].split(',')[0])
+                       .text.strip().split('By')[-1].strip().split(',')[0])
         authors = authors_raw.split(' with ') if authors_raw else []
 
         content = article_page.find('div', 'story-body').text.strip()
