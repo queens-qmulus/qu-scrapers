@@ -165,7 +165,7 @@ class Gazette:
         # Gazette also includes author title such as 'Alex, Communications'.
         # Remove job title, and split by ' with ' to create authors array
 
-        # Note: AlumniReview's has a mistake of adding typos to their authors,
+        # Note: AlumniReview has a mistake of adding typos to their authors,
         # such as "By By Lindy Mechefske"
         authors_raw = (article_page.find('div', 'story-byline')
                        .text.strip().split('By')[-1].strip().split(',')[0])
