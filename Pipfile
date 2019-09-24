@@ -16,5 +16,6 @@ pyyaml = "*"
 pygithub = "*"
 backoff = "*"
 pylint = "*"
+apscheduler = "*"
 
 [dev-packages]

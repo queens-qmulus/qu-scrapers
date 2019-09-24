@@ -112,7 +112,7 @@ class Buildings:
         def has_accessibility(details):
             """Check if accessibility tag exists on a particular building."""
             accessible = details.find('img', alt=re.compile('Accessibility'))
-            return True if accessible else False
+            return bool(accessible)
 
         def get_polygon(coords, campus):
             """convert polygon coords into tuple of integer pairs."""
