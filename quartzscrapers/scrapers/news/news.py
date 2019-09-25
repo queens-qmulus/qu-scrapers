@@ -29,6 +29,8 @@ class News:
     Juris Diction:          http://www.juris-diction.ca
     """
 
+    scraper_key = "news"
+
     logger = Scraper().logger
 
     news_sources = [
