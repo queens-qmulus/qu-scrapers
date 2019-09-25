@@ -16,6 +16,7 @@ import logging.config
 
 import yaml
 
+from quartzscrapers.scrapers.test_scraper import TestScraper
 from quartzscrapers.scrapers.buildings import Buildings
 from quartzscrapers.scrapers.textbooks import Textbooks
 from quartzscrapers.scrapers.courses import Courses

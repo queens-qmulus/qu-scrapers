@@ -10,14 +10,21 @@ import os
 import json
 import time
 import logging
+from enum import Enum
 import requests
 
 import backoff
 from bs4 import BeautifulSoup
 
 
+class ScrapeStatus(Enum):
+    """Enum capturing string for status of scraper module run """
+    SUCCESS = 'SUCCESS'
+    FAILED = 'FAILED'
+
 class Scraper:
     """Scraper base class. Handle common functions amongst all sub scrapers."""
+
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
@@ -35,6 +42,7 @@ class Scraper:
                            'AppleWebKit/537.36 (KHTML, like Gecko) '
                            'Chrome/63.0.3239.84 Safari/537.36'),
         }
+        self.dump_location = 'dumps'
 
     # Decorator for retrying HTTP requests. Using exponential backoff
     @backoff.on_exception(
@@ -78,6 +86,49 @@ class Scraper:
             return self._soupify(response)
 
         return response
+
+    def write_metadata(
+            self,
+            scrape_session_timestamp,
+            scraper_key,
+            status=True):
+        """Writes to the metadata.json file. Captures scraper module status and
+        timestamp.
+
+        Args:
+            scrape_session_timestamp: Unix time in seconds of scrape session.
+            scraper_key: Identifier for scraper module.
+            status: Success status of scrape in boolean.
+        """
+
+        scrape_status = ScrapeStatus.SUCCESS if status else ScrapeStatus.FAILED
+        partial_metadata = {
+            'scraper_key': scraper_key,
+            'scrape_session_timestamp': scrape_session_timestamp,
+            'status': scrape_status.value
+        }
+
+        location = './dumps/' + scrape_session_timestamp
+        if not os.path.exists(location):
+            os.makedirs(location)
+
+        filepath = location + '/metadata.json'
+        if os.path.isfile(filepath):
+            with open(filepath, 'r+t') as file:
+                content_dict = json.loads(file.read())
+                content_dict[scraper_key] = partial_metadata
+
+                # rewrite file from line 0
+                file.seek(0)
+                file.write(json.dumps(
+                    content_dict, indent=2, ensure_ascii=False))
+        else:
+            with open(filepath, 'w+') as file:
+                metadata = {}
+                metadata[scraper_key] = partial_metadata
+                metadata['scrape_session_timestamp'] = scrape_session_timestamp
+                file.write(json.dumps(
+                    metadata, indent=2, ensure_ascii=False))
 
     def write_data(self, data, filename, location='./dumps'):
         """Take data object and write to JSON file.
