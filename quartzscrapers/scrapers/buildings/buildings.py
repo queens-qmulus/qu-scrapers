@@ -19,6 +19,7 @@ class Buildings:
     Queen's campus map is currently located at <http://queensu.ca/maps>.
     """
 
+    scraper_key = "building_scraper"
     host = 'http://www.queensu.ca'
     scraper = Scraper()
     logger = scraper.logger

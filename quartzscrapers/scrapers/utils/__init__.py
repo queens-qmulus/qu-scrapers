@@ -6,3 +6,4 @@ This module contains the initialization of the scraper module.
 """
 
 from .scraper import Scraper # noqa
+from .scraper import ScrapeStatus # noqa

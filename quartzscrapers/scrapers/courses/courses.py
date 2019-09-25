@@ -38,6 +38,7 @@ class Courses:
     its credentials via the cookies returned from a login.
     """
 
+    scraper_key = "courses_scraper"
     LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
     @staticmethod

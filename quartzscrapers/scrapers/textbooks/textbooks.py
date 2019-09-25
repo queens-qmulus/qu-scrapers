@@ -24,6 +24,7 @@ class Textbooks:
     Current website: <https://www.campusbookstore.com>.
     """
 
+    scraper_key = "textbook_scraper"
     host = 'https://www.campusbookstore.com'
     scraper = Scraper()
     logger = scraper.logger

@@ -12,9 +12,16 @@ import time
 import logging
 import requests
 
+from enum import Enum
+
 import backoff
 from bs4 import BeautifulSoup
 
+class ScrapeStatus(Enum):
+    """TODO
+    """
+    SUCCESS = 'SUCCESS'
+    FAILED = 'FAILED'
 
 class Scraper:
     """Scraper base class. Handle common functions amongst all sub scrapers."""
@@ -78,6 +85,38 @@ class Scraper:
             return self._soupify(response)
 
         return response
+
+    def write_metadata(self, scrape_session_timestamp, scraper_key, status):
+        """TODO
+        """
+
+        partial_metadata = {
+            'scraper_key': scraper_key,
+            'scrape_session_timestamp': scrape_session_timestamp,
+            'status': status.value
+        }
+
+        location = './dumps/' + scrape_session_timestamp
+        if not os.path.exists(location):
+            os.makedirs(location)
+
+        filepath = location + '/metadata.json'
+        if os.path.isfile(filepath):
+            with open(filepath, 'r+t') as file:
+                content_dict = json.loads(file.read())
+                content_dict[scraper_key] = partial_metadata
+
+                # rewrite file from line 0
+                file.seek(0)
+                file.write(json.dumps(content_dict, indent=2, ensure_ascii=False))
+        else:
+            with open(filepath, 'w+') as file:
+                new_metadata = { }
+                new_metadata[scraper_key] = partial_metadata
+                new_metadata['scrape_session_timestamp'] = scrape_session_timestamp
+                file.write(json.dumps(new_metadata, indent=2, ensure_ascii=False))
+
+
 
     def write_data(self, data, filename, location='./dumps'):
         """Take data object and write to JSON file.
