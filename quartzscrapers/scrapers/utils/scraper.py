@@ -15,9 +15,9 @@ import requests
 import backoff
 from bs4 import BeautifulSoup
 
-
 class Scraper:
     """Scraper base class. Handle common functions amongst all sub scrapers."""
+
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
