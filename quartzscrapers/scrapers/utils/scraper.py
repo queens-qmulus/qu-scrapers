@@ -17,11 +17,13 @@ from enum import Enum
 import backoff
 from bs4 import BeautifulSoup
 
+
 class ScrapeStatus(Enum):
     """TODO
     """
     SUCCESS = 'SUCCESS'
     FAILED = 'FAILED'
+
 
 class Scraper:
     """Scraper base class. Handle common functions amongst all sub scrapers."""
@@ -108,15 +110,15 @@ class Scraper:
 
                 # rewrite file from line 0
                 file.seek(0)
-                file.write(json.dumps(content_dict, indent=2, ensure_ascii=False))
+                file.write(json.dumps(
+                    content_dict, indent=2, ensure_ascii=False))
         else:
             with open(filepath, 'w+') as file:
-                new_metadata = { }
-                new_metadata[scraper_key] = partial_metadata
-                new_metadata['scrape_session_timestamp'] = scrape_session_timestamp
-                file.write(json.dumps(new_metadata, indent=2, ensure_ascii=False))
-
-
+                metadata = {}
+                metadata[scraper_key] = partial_metadata
+                metadata['scrape_session_timestamp'] = scrape_session_timestamp
+                file.write(json.dumps(
+                    metadata, indent=2, ensure_ascii=False))
 
     def write_data(self, data, filename, location='./dumps'):
         """Take data object and write to JSON file.

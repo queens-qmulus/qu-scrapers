@@ -29,7 +29,7 @@ class News:
     Juris Diction:          http://www.juris-diction.ca
     """
 
-    scraper_key = "alumni_scraper"
+    scraper_key = "news_scraper"
 
     logger = Scraper().logger
 

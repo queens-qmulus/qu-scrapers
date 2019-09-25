@@ -6,8 +6,6 @@ It serves as a good example of a simple scraper and is used to test the
 scraper and dataset scheduled task pipeline.
 """
 
-import time
-
 from ..utils import (Scraper, ScrapeStatus)
 
 class TestScraper:
@@ -47,13 +45,17 @@ class TestScraper:
             TestScraper.scraper.write_data(titles_list, filename, location)
             TestScraper.logger.debug('Writing TestScraper metadata')
             TestScraper.scraper.write_metadata(
-                scrape_session_timestamp, TestScraper.scraper_key, ScrapeStatus.SUCCESS)
+                scrape_session_timestamp,
+                TestScraper.scraper_key,
+                ScrapeStatus.SUCCESS)
             TestScraper.logger.info('Completed Test scrape')
 
         except Exception:
             TestScraper.scraper.handle_error()
             TestScraper.scraper.write_metadata(
-                scrape_session_timestamp, TestScraper.scraper_key, ScrapeStatus.FAILED)
+                scrape_session_timestamp,
+                TestScraper.scraper_key,
+                ScrapeStatus.FAILED)
 
     @staticmethod
     def _get_front_page():

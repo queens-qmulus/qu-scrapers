@@ -3,10 +3,8 @@ name: Python application
 on: [push]
 
 jobs:
-  build:
-
+  lint:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v1
     - uses: actions/setup-python@v1
@@ -20,3 +18,19 @@ jobs:
     - name: Lint with pylint
       run: |
         find . -iname "*.py" | xargs pipenv run pylint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/setup-python@v1
+      with:
+        python-version: '3.x'
+    - name: Set up pipenv
+      uses: dschep/install-pipenv-action@v1
+    - name: Install dependencies
+      run: |
+        pipenv --python 3 install
+    - name: Runs scraper test
+      run: |
+        pipenv run python simple_scraper_test.py
