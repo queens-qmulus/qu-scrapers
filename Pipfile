@@ -19,3 +19,5 @@ pylint = "*"
 apscheduler = "*"
 
 [dev-packages]
+pylint = "*"
+autopep8 = "*"
