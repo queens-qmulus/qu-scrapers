@@ -66,6 +66,7 @@ class Courses:
 
 class CourseWorker(Thread):
     """Worker thread for courses scraper."""
+
     def __init__(self, queue, location):
         Thread.__init__(self)
         self.queue = queue
@@ -141,7 +142,7 @@ class CourseSession:
                         if not self._has_multiple_course_offerings(soup):
                             title = soup.find(
                                 'span', id='DERIVED_CRSECAT_DESCR200'
-                                ).text.strip()
+                            ).text.strip()
                             self.logger.debug('Course title: %s', title)
 
                             self._navigate_and_parse_course(soup)
@@ -149,7 +150,7 @@ class CourseSession:
                             return_state = 'DERIVED_SSS_SEL_RETURN_PB$181$'
                             title = soup.find(
                                 'span', id='DERIVED_SSS_SEL_DESCR200'
-                                ).text.strip()
+                            ).text.strip()
                             self.logger.debug('Course title: %s', title)
                             self.logger.debug('Multiple offerings found')
 
@@ -216,7 +217,7 @@ class CourseSession:
                         payload = {
                             'ICAction': 'DERIVED_SAA_CRS_SSR_PB_GO$3$',
                             'DERIVED_SAA_CRS_TERM_ALT': term_number,
-                            }
+                        }
 
                         soup = self._request_page(payload)
 
@@ -431,6 +432,7 @@ class CourseSession:
         return view_all_tab and 'View All' in view_all_tab
 
     def _get_academic_levels(self, soup):
+        # pylint: disable=unnecessary-comprehension
         return [url for url in soup.find_all('a', id=re.compile(r'CAREER\$'))]
 
     def _parse_department_data(self, department):
@@ -516,7 +518,7 @@ class CourseSession:
                 'Enrollment Requirement': 'requirements',
                 'Add Consent': 'add_consent',
                 'Drop Consent': 'drop_consent',
-                }
+            }
 
             data = {}
 
@@ -542,7 +544,7 @@ class CourseSession:
                 'End Des': 'end_des',
                 'Eng Sci': 'eng_sci',
                 'Math': 'math',
-                }
+            }
 
             ceab_data = {}
             ceab_units = (
@@ -633,10 +635,9 @@ class CourseSession:
             'Fr': 'Friday',
             'Sa': 'Saturday',
             'Su': 'Sunday',
-            }
+        }
 
         # =========================== Class Details ===========================
-        section_name = section_name
         _, year_term, section_type = soup.find(
             'span',
             id='DERIVED_CLSRCH_SSS_PAGE_KEYDESCR').text.strip().split(' | ')
@@ -716,7 +717,7 @@ class CourseSession:
                 'end_date': end_date,
                 'location': location,
                 'instructors': instructors,
-                }
+            }
 
             if course_date['day'] == 'TBA':
                 course_dates.append(OrderedDict(course_date))
