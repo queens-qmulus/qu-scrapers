@@ -39,22 +39,31 @@ class Courses:
     """
 
     scraper_key = "courses"
+    scraper = Scraper()
     LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
     @staticmethod
-    def scrape(location='./dumps/courses'):
+    def scrape(scrape_session_timestamp):
         """Manage worker scrapers to parse information custom to SOLUS.
 
         Args:
-            location (optional): String location of output files.
+            scrape_session_timestamp: Unix timestamp for current scrape session
         """
         logger = setup_logging()
 
         logger.info('Starting Courses scrape')
         queue = Queue()
 
+        location = './{}/{}/{}'.format(
+            Courses.scraper.dump_location,
+            scrape_session_timestamp,
+            Courses.scraper_key)
+
         for _ in Courses.LETTERS:
-            course_worker = CourseWorker(queue, location)
+            course_worker = CourseWorker(
+                queue,
+                location,
+                scrape_session_timestamp)
             course_worker.daemon = True
             course_worker.start()
 
@@ -63,21 +72,26 @@ class Courses:
 
         queue.join()
         logger.info('Completed Courses scrape')
-
+        Courses.scraper.write_metadata(
+            scrape_session_timestamp,
+            Courses.scraper_key)
 
 class CourseWorker(Thread):
     """Worker thread for courses scraper."""
 
-    def __init__(self, queue, location):
+    def __init__(self, queue, location, scrape_session_timestamp):
         Thread.__init__(self)
         self.queue = queue
         self.location = location
+        self.scrape_session_timestamp = scrape_session_timestamp
 
     def run(self):
         """Instantiate CourseSession class to execute scraping."""
         while True:
             letter = self.queue.get()
-            course_scraper = CourseSession(self.location)
+            course_scraper = CourseSession(
+                self.location,
+                self.scrape_session_timestamp)
             course_scraper.scrape(letter)
             self.queue.task_done()
 
@@ -88,11 +102,12 @@ class CourseSession:
     host = ('https://saself.ps.queensu.ca/psc/saself/EMPLOYEE/SA/c/'
             'SA_LEARNER_SERVICES.SSS_BROWSE_CATLG_P.GBL')
 
-    def __init__(self, location):
+    def __init__(self, location, scrape_session_timestamp):
         self.scraper = Scraper()
         self.location = location
         self.logger = self.scraper.logger
         self.cookies = self._login()
+        self.scrape_session_timestamp = scrape_session_timestamp
 
     def scrape(self, letter):
         """Scrape information custom to SOLUS.
@@ -171,12 +186,16 @@ class CourseSession:
                                     self._navigate_and_parse_course(soup)
 
                                 except Exception:
-                                    self.scraper.handle_error()
+                                    self.scraper.handle_error(
+                                        self.scrape_session_timestamp,
+                                        Courses.scraper_key)
 
                             self.logger.debug('Done careers.')
 
                     except Exception:
-                        self.scraper.handle_error()
+                        self.scraper.handle_error(
+                            self.scrape_session_timestamp,
+                            Courses.scraper_key)
 
                     # go back to course listing
                     self.logger.debug('Returning to course list')
@@ -186,7 +205,9 @@ class CourseSession:
                 self.logger.debug('Done department')
 
             except Exception:
-                self.scraper.handle_error()
+                self.scraper.handle_error(
+                    self.scrape_session_timestamp,
+                    Courses.scraper_key)
 
         self.logger.debug('Done letter %s', letter)
 
@@ -265,7 +286,9 @@ class CourseSession:
                                 )
 
                             except Exception:
-                                self.scraper.handle_error()
+                                self.scraper.handle_error(
+                                    self.scrape_session_timestamp,
+                                    Courses.scraper_key)
 
                             # go back to sections
                             ic_action = {
@@ -276,12 +299,16 @@ class CourseSession:
                         self.logger.debug('Done term')
 
                     except Exception:
-                        self.scraper.handle_error()
+                        self.scraper.handle_error(
+                            self.scrape_session_timestamp,
+                            Courses.scraper_key)
 
                 self.logger.debug('Done course')
 
         except Exception:
-            self.scraper.handle_error()
+            self.scraper.handle_error(
+                self.scrape_session_timestamp,
+                Courses.scraper_key)
 
         ic_action = {'ICAction': 'DERIVED_SAA_CRS_RETURN_PB$163$'}
         self._request_page(ic_action)

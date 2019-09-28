@@ -30,8 +30,8 @@ class News:
     """
 
     scraper_key = "news"
-
-    logger = Scraper().logger
+    scraper = Scraper()
+    logger = scraper.logger
 
     news_sources = [
         Journal,
@@ -42,12 +42,23 @@ class News:
     ]
 
     @staticmethod
-    def scrape(deep=False, location='./dumps/news'):
+    def scrape(scrape_session_timestamp, deep=False):
         """Update database records for news scraper"""
 
         News.logger.info('Starting News scrape')
 
+        location = './{}/{}/{}'.format(
+            News.scraper.dump_location,
+            scrape_session_timestamp,
+            News.scraper_key)
+
         for news_source in News.news_sources:
-            news_source.scrape(deep=deep, location=location)
+            news_source.scrape(
+                scrape_session_timestamp,
+                deep=deep,
+                location=location)
 
         News.logger.info('Completed News scrape')
+        News.scraper.write_metadata(
+            scrape_session_timestamp,
+            News.scraper_key)

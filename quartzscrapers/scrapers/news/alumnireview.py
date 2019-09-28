@@ -17,10 +17,16 @@ class AlumniReview(Gazette):
     slug = 'alumnireview'
 
     @staticmethod
-    def scrape(deep=False, location='./dumps/news'):
+    def scrape(scrape_session_timestamp,
+               deep=False,
+               location='./dumps/news'):
         """Scrape information custom to Queen's Alumni Review.
 
         This is a subcategory under Queen's Gazette.
         """
         super(AlumniReview, AlumniReview).scrape(
-            deep, location, 'gazette/alumnireview/stories', AlumniReview.slug)
+            scrape_session_timestamp,
+            deep,
+            location,
+            'gazette/alumnireview/stories',
+            AlumniReview.slug)

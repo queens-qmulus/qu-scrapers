@@ -25,11 +25,11 @@ class Buildings:
     logger = scraper.logger
 
     @staticmethod
-    def scrape(location='./dumps/buildings'):
+    def scrape(scrape_session_timestamp):
         """Scrape building information to JSON files.
 
         Args:
-            location (optional): String location of output files.
+            scrape_session_timestamp: Unix timestamp for current scrape session
         """
         Buildings.logger.info('Starting Buildings scrape')
 
@@ -56,15 +56,24 @@ class Buildings:
                         soup, campus_name, building_href)
 
                     if building_data:
+                        location = './{}/{}/{}'.format(
+                            Buildings.scraper.dump_location,
+                            scrape_session_timestamp,
+                            Buildings.scraper_key)
                         Buildings.scraper.write_data(
                             building_data, building_param, location)
 
                 except Exception:
-                    Buildings.scraper.handle_error()
+                    Buildings.scraper.handle_error(
+                        scrape_session_timestamp,
+                        Buildings.scraper_key)
 
                 Buildings.scraper.wait()
 
         Buildings.logger.info('Completed Buildings scrape')
+        Buildings.scraper.write_metadata(
+            scrape_session_timestamp,
+            Buildings.scraper_key)
 
     @staticmethod
     def _get_campuses(relative_url):

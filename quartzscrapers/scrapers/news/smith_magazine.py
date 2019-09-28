@@ -20,13 +20,16 @@ class SmithMagazine:
     Site is currently located at <https://smith.queensu.ca/magazine>.
     """
 
+    scraper_key = 'news'
     host = 'https://smith.queensu.ca'
     slug = 'smithmagazine'
     scraper = Scraper()
     logger = scraper.logger
 
     @staticmethod
-    def scrape(deep=False, location='./dumps/news'):
+    def scrape(scrape_session_timestamp,
+               deep=False,
+               location='./dumps/news'):
         """Scrape information custom to Smith Magazine.
 
         Args:
@@ -84,13 +87,19 @@ class SmithMagazine:
                                 SmithMagazine.scraper.wait()
 
                             except Exception:
-                                SmithMagazine.scraper.handle_error()
+                                SmithMagazine.scraper.handle_error(
+                                    scrape_session_timestamp,
+                                    SmithMagazine.scraper_key)
 
                 except Exception:
-                    SmithMagazine.scraper.handle_error()
+                    SmithMagazine.scraper.handle_error(
+                        scrape_session_timestamp,
+                        SmithMagazine.scraper_key)
 
         except Exception:
-            SmithMagazine.scraper.handle_error()
+            SmithMagazine.scraper.handle_error(
+                scrape_session_timestamp,
+                SmithMagazine.scraper_key)
 
         SmithMagazine.logger.info('Completed SmithMagazine scrape')
 
@@ -104,7 +113,7 @@ class SmithMagazine:
         magazine_archives = soup.find_all('div', 'field-content')
         magazine_archive_urls = (
             [archive.find('a')['href'] for archive in magazine_archives]
-            )
+        )
 
         return magazine_archive_urls
 
@@ -120,7 +129,7 @@ class SmithMagazine:
 
         article_sections = (
             soup.find('div', 'group-right').find_all('div', 'field')
-            )
+        )
 
         return article_sections
 
@@ -146,7 +155,7 @@ class SmithMagazine:
         authors = (
             authors_raw.find('div', 'field-item').text.strip().split(', ')
             if authors_raw else []
-            )
+        )
 
         content_raw = article_page.find('div', 'field-name-body')
         content = content_raw.text.strip() if content_raw else ''

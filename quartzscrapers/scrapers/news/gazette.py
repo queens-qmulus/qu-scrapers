@@ -22,17 +22,18 @@ class Gazette:
     Site is currently located at <https://www.queensu.ca/gazette>.
     """
 
+    scraper_key = 'news'
     host = 'http://www.queensu.ca'
     slug = 'gazette'
     scraper = Scraper()
     logger = scraper.logger
 
     @staticmethod
-    def scrape(
-            deep=False,
-            location='./dumps/news',
-            relative_url='gazette/stories/all',
-            slug=slug):
+    def scrape(scrape_session_timestamp,
+               deep=False,
+               location='./dumps/news',
+               relative_url='gazette/stories/all',
+               slug=slug):
         """Scrape information custom to Queen's Gazette.
 
         Args:
@@ -75,10 +76,14 @@ class Gazette:
                         Gazette.scraper.wait()
 
                     except Exception:
-                        Gazette.scraper.handle_error()
+                        Gazette.scraper.handle_error(
+                            scrape_session_timestamp,
+                            Gazette.scraper_key)
 
             except Exception:
-                Gazette.scraper.handle_error()
+                Gazette.scraper.handle_error(
+                    scrape_session_timestamp,
+                    Gazette.scraper_key)
 
         Gazette.logger.info('Completed Gazette scrape')
 

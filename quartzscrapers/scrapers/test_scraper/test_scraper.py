@@ -46,17 +46,14 @@ class TestScraper:
             TestScraper.logger.debug('Writing TestScraper metadata')
             TestScraper.scraper.write_metadata(
                 scrape_session_timestamp,
-                TestScraper.scraper_key,
-                True)
+                TestScraper.scraper_key)
 
             TestScraper.logger.info('Completed Test scrape')
 
         except Exception:
-            TestScraper.scraper.handle_error()
-            TestScraper.scraper.write_metadata(
+            TestScraper.scraper.handle_error(
                 scrape_session_timestamp,
-                TestScraper.scraper_key,
-                True)
+                TestScraper.scraper_key)
 
     @staticmethod
     def _get_front_page():

@@ -17,7 +17,7 @@ SCRAPERS = [qs.TestScraper, qs.Buildings, qs.Textbooks, qs.Courses, qs.News]
 
 for module in SCRAPERS:
     if module.scraper_key not in TO_SCRAPE:
-        break
+        continue
 
     module_start_time = int(time.time())
     print('Starting {} scrape'.format(module.scraper_key))

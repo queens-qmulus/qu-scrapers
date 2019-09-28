@@ -30,11 +30,11 @@ class Textbooks:
     logger = scraper.logger
 
     @staticmethod
-    def scrape(location='./dumps/textbooks'):
+    def scrape(scrape_session_timestamp):
         """Scrape textbook information to JSON files.
 
         Args:
-            location (optional): String location output files.
+            scrape_session_timestamp: Unix timestamp for current scrape session
         """
         Textbooks.logger.info('Starting Textbooks scrape')
 
@@ -102,6 +102,10 @@ class Textbooks:
                                 Textbooks.scraper.handle_error()
 
                         if course_data or textbook_data:
+                            location = './{}/{}/{}'.format(
+                                Textbooks.scraper.dump_location,
+                                scrape_session_timestamp,
+                                Textbooks.scraper_key)
                             save_textbook_data(
                                 course_data,
                                 textbook_data,
@@ -113,12 +117,19 @@ class Textbooks:
                         Textbooks.scraper.wait()
 
                     except Exception:
-                        Textbooks.scraper.handle_error()
+                        Textbooks.scraper.handle_error(
+                            scrape_session_timestamp,
+                            Textbooks.scraper_key)
 
             except Exception:
-                Textbooks.scraper.handle_error()
+                Textbooks.scraper.handle_error(
+                    scrape_session_timestamp,
+                    Textbooks.scraper_key)
 
         Textbooks.logger.info('Completed Textbooks scrape')
+        Textbooks.scraper.write_metadata(
+            scrape_session_timestamp,
+            Textbooks.scraper_key)
 
     @staticmethod
     def _get_departments(relative_url):

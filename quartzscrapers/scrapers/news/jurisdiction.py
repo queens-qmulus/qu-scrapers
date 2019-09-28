@@ -17,13 +17,16 @@ class JurisDiction:
     Site is currently located at <http://juris-diction.ca>.
     """
 
+    scraper_key = 'news'
     host = 'http://www.juris-diction.ca'
     slug = 'jurisdiction'
     scraper = Scraper()
     logger = scraper.logger
 
     @staticmethod
-    def scrape(deep=False, location='./dumps/news'):
+    def scrape(scrape_session_timestamp,
+               deep=False,
+               location='./dumps/news'):
         """Scrape information custom to Juris Diction.
 
         Args:
@@ -86,7 +89,9 @@ class JurisDiction:
                                     JurisDiction.scraper.wait()
 
                                 except Exception:
-                                    JurisDiction.scraper.handle_error()
+                                    JurisDiction.scraper.handle_error(
+                                        scrape_session_timestamp,
+                                        JurisDiction.scraper_key)
 
                             page_num += 1
 
@@ -156,7 +161,7 @@ class JurisDiction:
         authors = (
             authors_raw.text.replace(' and', ',').split(', ')
             if authors_raw else []
-            )
+        )
 
         content = article_page.find('div', 'vw-post-content').text.strip()
         content_raw = str(article_page.find('div', 'vw-post-content'))

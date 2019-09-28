@@ -116,6 +116,8 @@ class Scraper:
         if os.path.isfile(filepath):
             with open(filepath, 'r+t') as file:
                 content_dict = json.loads(file.read())
+                # TODO: if this module already has a FAILED status,
+                # don't overwrite with SUCCESS status
                 content_dict[scraper_key] = partial_metadata
 
                 # rewrite file from line 0
@@ -176,9 +178,12 @@ class Scraper:
         """
         time.sleep(seconds)
 
-    def handle_error(self):
+    def handle_error(self, scrape_session_timestamp, scraper_key):
         """Handle error by logging error message."""
         self.logger.error('Scraper error', exc_info=True)
+        self.write_metadata(
+            scrape_session_timestamp,
+            scraper_key, False)
 
     def _soupify(self, response):
         """Detect response format and return respective BeautifulSoup parser.

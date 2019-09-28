@@ -21,13 +21,16 @@ class Journal:
     Site is currently located at <https://www.queensjournal.ca>.
     """
 
+    scraper_key = 'news'
     host = 'http://www.queensjournal.ca'
     slug = 'queensjournal'
     scraper = Scraper()
     logger = scraper.logger
 
     @staticmethod
-    def scrape(deep=False, location='./dumps/news'):
+    def scrape(scrape_session_timestamp,
+               deep=False,
+               location='./dumps/news'):
         """Scrape information custom to The Queen's Journal.
 
         Args:
@@ -85,13 +88,19 @@ class Journal:
 
                                 Journal.scraper.wait()
                             except Exception:
-                                Journal.scraper.handle_error()
+                                Journal.scraper.handle_error(
+                                    scrape_session_timestamp,
+                                    Journal.scraper_key)
 
                     except Exception:
-                        Journal.scraper.handle_error()
+                        Journal.scraper.handle_error(
+                            scrape_session_timestamp,
+                            Journal.scraper_key)
 
             except Exception:
-                Journal.scraper.handle_error()
+                Journal.scraper.handle_error(
+                    scrape_session_timestamp,
+                    Journal.scraper_key)
 
         Journal.logger.info('Completed Journal scrape')
 
@@ -140,7 +149,7 @@ class Journal:
         articles = soup.find_all('div', 'node-story')
         article_rel_urls = (
             [article.find('h2').find('a')['href'] for article in articles]
-            )
+        )
 
         return article_rel_urls
 
