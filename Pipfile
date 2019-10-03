@@ -15,9 +15,8 @@ lxml = "*"
 pyyaml = "*"
 pygithub = "*"
 backoff = "*"
-pylint = "*"
 apscheduler = "*"
 
 [dev-packages]
-pylint = "*"
+flake8 = "*"
 autopep8 = "*"

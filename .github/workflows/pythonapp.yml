@@ -15,9 +15,9 @@ jobs:
     - name: Install dependencies
       run: |
         pipenv --python 3 install
-    - name: Lint with pylint
+    - name: Lint with flake8
       run: |
-        find . -iname "*.py" | xargs pipenv run pylint
+        find . -iname "*.py" | xargs pipenv run flake8
 
   test:
     runs-on: ubuntu-latest

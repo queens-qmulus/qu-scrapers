@@ -19,13 +19,14 @@ class Buildings:
     Queen's campus map is currently located at <http://queensu.ca/maps>.
     """
 
-    scraper_key = "buildings"
+    scraper_key = 'buildings'
+    location = './dumps/{}'.format(scraper_key)
     host = 'http://www.queensu.ca'
     scraper = Scraper()
     logger = scraper.logger
 
     @staticmethod
-    def scrape(location='./dumps/buildings'):
+    def scrape(location=location):
         """Scrape building information to JSON files.
 
         Args:
@@ -64,7 +65,7 @@ class Buildings:
 
                 Buildings.scraper.wait()
 
-        Buildings.logger.info('Completed Buildings scrape')
+        Buildings.logger.info('Completed scrape')
 
     @staticmethod
     def _get_campuses(relative_url):

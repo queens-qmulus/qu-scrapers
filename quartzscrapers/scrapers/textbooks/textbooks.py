@@ -9,6 +9,8 @@ import re
 from urllib.parse import urljoin
 from collections import OrderedDict
 
+from bs4.element import NavigableString, Tag
+
 from ..utils import Scraper
 from .textbooks_helpers import (
     get_google_books_info,
@@ -24,13 +26,14 @@ class Textbooks:
     Current website: <https://www.campusbookstore.com>.
     """
 
-    scraper_key = "textbooks"
+    scraper_key = 'textbooks'
+    location = './dumps/{}'.format(scraper_key)
     host = 'https://www.campusbookstore.com'
     scraper = Scraper()
     logger = scraper.logger
 
     @staticmethod
-    def scrape(location='./dumps/textbooks'):
+    def scrape(location=location):
         """Scrape textbook information to JSON files.
 
         Args:
@@ -147,7 +150,9 @@ class Textbooks:
         course_rel_urls = []
         department_url = urljoin(Textbooks.host, relative_url)
         soup = Textbooks.scraper.http_request(
-            department_url, params=dict(q=department))
+            department_url,
+            params=dict(q=department),
+        )
 
         # Use regex to filter textbooks having the right department substring
         regex = department + '[0-9]+'
@@ -160,12 +165,20 @@ class Textbooks:
 
         for course in courses:
             try:
-                course_details = course.next_sibling.next_sibling
-                course_rel_url = course_details.find(
-                    'dd', text=re.compile('Course=')
-                    ).text.strip()
+                course_rel_url = None
+                siblings = (
+                    sib for sib in course.next_siblings if isinstance(sib, Tag)
+                )
 
-                course_rel_urls.append(course_rel_url)
+                # Traverse course's siblings until we bump into its URL tag.
+                for sib in siblings:
+                    if course_rel_url:
+                        break
+
+                    course_rel_url = sib.find('dd', text=re.compile('Course='))
+
+                if course_rel_url:
+                    course_rel_urls.append(course_rel_url.text.strip())
 
             except Exception:
                 Textbooks.scraper.handle_error()
