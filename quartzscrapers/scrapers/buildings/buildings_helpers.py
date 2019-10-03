@@ -15,6 +15,7 @@ GMAPS = None
 if GOOGLE_MAPS_KEY:
     GMAPS = googlemaps.Client(key=GOOGLE_MAPS_KEY)
 
+
 def get_building_coords(address):
     """Use Google Maps API to triangulate geocoordinates of an address.
 

@@ -1,6 +1,6 @@
 """
 quartzscrapers.scrapers.textbooks.textbooks
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This module contains the Textbooks class scraper for parsing textbook data.
 """
@@ -9,7 +9,7 @@ import re
 from urllib.parse import urljoin
 from collections import OrderedDict
 
-from bs4.element import NavigableString, Tag
+from bs4.element import Tag
 
 from ..utils import Scraper
 from .textbooks_helpers import (
@@ -41,7 +41,7 @@ class Textbooks:
         """
         Textbooks.logger.info('Starting Textbooks scrape')
 
-        # course department codes, such as CISC, ANAT, PHAR, etc..
+        # Course department codes, such as CISC, ANAT, PHAR, etc..
         departments = Textbooks._get_departments('textbooks/search-engine')
 
         for department in departments:
@@ -154,10 +154,10 @@ class Textbooks:
             params=dict(q=department),
         )
 
-        # Use regex to filter textbooks having the right department substring
+        # Use regex to filter textbooks having the right department substring.
         regex = department + '[0-9]+'
 
-        # filter to only retain one department code of courses
+        # Filter to only retain one department code of courses.
         courses_all = soup.find_all('h3')
         courses = [c for c in courses_all if re.search(regex, c.text)]
 
@@ -203,12 +203,12 @@ class Textbooks:
             E.g: WINTER18 becomes WINTER, [18]
             """
 
-            # some phrases could have multiple hyphens, like
+            # NOTE: Some phrases could have multiple hyphens, like
             # 'COMM181-001,-002'. Separate word from num to get
             # ['COMM', '181-001', '-002'], conjoin the 2nd index onwards to
             # one string as '181-001-002', and split again to
             # ['181', '001', '002']. Splice into an array of numbered extras
-            # such as ['181-001', '181-002']
+            # such as ['181-001', '181-002'].
             rgx1, rgx2 = r'([a-zA-Z]+)([0-9]+)', r'\1,\2'
 
             # Extended Iterable Unpacking (PEP 3132). If too many variables to
@@ -235,24 +235,24 @@ class Textbooks:
                 'FW': 'Fall,Winter',
             }
 
-            # remove leading 'L' from 'LSUM', 'LWIN', etc
+            # Remove leading 'L' from 'LSUM', 'LWIN', etc.
             term = term.lstrip('L')
             return term_map.get(term, term).split(',')
 
         course_list = []
         regex = re.compile('[()]')
 
-        # e.g: course text: ENGL223 (WINTER2018)
+        # E.g.: Course text: ENGL223 (WINTER2018).
         dep_course_code, year_term = course_page.find(
             'span', id='textbookCategory'
             ).text.strip().split(' ')
 
-        # turns ENGL223 to ENGL and 223
+        # Turns ENGL223 to ENGL and 223.
         department, course_codes = split_string(dep_course_code)
 
-        # strips '(' and ')' and turns (WINTER2018) WINTER and 2018
+        # Strips '(' and ')' and turns (WINTER2018) into WINTER and 2018.
         # CONT courses have 'CTE' trailing their course codes, such as
-        # LWIN18CTE, which is stripped
+        # LWIN18CTE, which is stripped.
         term_raw, year_raw = split_string(
             regex.sub('', year_term).strip('CTE'))
 
@@ -293,7 +293,7 @@ class Textbooks:
     def _parse_textbook_data(textbook):
         # Parse textbook data from course page.
 
-        # === Info retrieved internally ===
+        # ===================== Info retrieved internally =====================
         image_ref = urljoin(
             Textbooks.host,
             textbook.find('img', {'data-id': 'toLoad'})['data-url']
@@ -310,7 +310,7 @@ class Textbooks:
 
         Textbooks.logger.debug('Textbook ISBN: %s', isbn_13)
 
-        # may need both new and old prices, or just new prices (or none)
+        # May need both new and old prices, or just new prices (or none).
         prices = textbook.find_all('dd', 'textbookPrice')
         price_new = price_used = None
 
@@ -321,7 +321,7 @@ class Textbooks:
             if len(prices) > 1 and '$' in prices[1].text:
                 price_used = float(prices[1].text.strip().replace(',', '')[1:])
 
-        # == Info retrieved externally (via Google Books API) ==
+        # ========== Info retrieved externally (via Google Books API) =========
         google_books_info = get_google_books_info(isbn_13, Textbooks.scraper)
 
         if google_books_info:
@@ -335,17 +335,17 @@ class Textbooks:
             *title_raw, authors_raw = re.sub(
                 r'[ ]+by$', ' by ', title_str).split(' by ')
 
-            # rebuild array name into title. For example, if the title is
+            # Rebuild array name into title. For example, if the title is
             # "Writing by Choice by Eric Henderson", title_raw will
             # be ['Writing, Choice'], and converted into 'Writing by Choice'
             title_combined = ' by '.join(title_raw).strip()
 
-            # Remove whitespace between titles
+            # Remove whitespace between titles.
             title = re.sub(r'\s+', ' ', title_combined)
             authors = authors_raw.strip().replace('/', ', ').split(', ')
             isbn_10 = None
 
-        # normalize names, whether from Google Books or Textbooks scraper
+        # Normalize names, whether from Google Books or Textbooks scraper.
         authors = normalize_string(authors) if authors else []
 
         data = {

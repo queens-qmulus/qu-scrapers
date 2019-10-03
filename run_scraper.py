@@ -1,4 +1,8 @@
-"""Script to start a scrape session.
+"""
+run_scraper
+~~~~~~~~~~~
+
+Script to start a scrape session.
 
 Positional command line arguments:
     argv[1:]: list of modules (indentified by scraper_key) to scrape

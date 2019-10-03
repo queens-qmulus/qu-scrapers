@@ -65,7 +65,7 @@ class Buildings:
 
                 Buildings.scraper.wait()
 
-        Buildings.logger.info('Completed scrape')
+        Buildings.logger.info('Completed Buildings scrape')
 
     @staticmethod
     def _get_campuses(relative_url):
@@ -79,15 +79,15 @@ class Buildings:
 
     @staticmethod
     def _get_campus_name(campus):
-        #Proprocess campu name
+        # Preprocess campus name.
         return campus.strip().lower().replace('the ', '').split(' campus')[0]
 
     @staticmethod
     def _get_buildings(campus_url):
         # Get list of relative building URLs as BeautifulSoup HTML tags.
 
-        # pull campus name from relative url, such as /campusmap/west,
-        # which splits by '/' and grab the last value
+        # Pull campus name from relative url, such as /campusmap/west,
+        # which splits by '/' and grab the last value.
         campus_name = campus_url.split('/')[-1]
 
         Buildings.logger.debug('Campus: %s', campus_name.upper())
@@ -120,7 +120,7 @@ class Buildings:
             """convert polygon coords into tuple of integer pairs."""
             polygon = []
 
-            # normalize Isabel building coordinate format
+            # Normalize Isabel building coordinate format.
             if campus == 'isabel':
                 coords = re.sub(
                     r'([0-9]+),([0-9]+)', r' \1,\2', coords).strip()
@@ -133,16 +133,16 @@ class Buildings:
 
             return polygon
 
-        # Parsing campus map tag
+        # Parse campus map tag.
         campus_map = soup.find('map')
         building = campus_map.find('area', href=building_href)
 
-        # Parsing building sidebar info
+        # Parse building sidebar info.
         details = soup.find('div', class_='building-details')
         address_label = details.find('span', text=re.compile('Address'))
         code_label = details.find('span', text=re.compile('Building Code'))
 
-        # Actual data
+        # Actual data.
         param = building_href.split('=')[1]
         name = soup.find('div', class_='title').text.strip()
         code = parse_label(code_label)
