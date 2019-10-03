@@ -15,6 +15,7 @@ lxml = "*"
 pyyaml = "*"
 pygithub = "*"
 backoff = "*"
+flake8 = "*"
 apscheduler = "*"
 
 [dev-packages]
