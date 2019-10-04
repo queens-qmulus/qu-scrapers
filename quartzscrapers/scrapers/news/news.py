@@ -29,8 +29,8 @@ class News:
     Juris Diction:          http://www.juris-diction.ca
     """
 
-    scraper_key = "news"
-
+    scraper_key = 'news'
+    location = './dumps/{}'.format(scraper_key)
     logger = Scraper().logger
 
     news_sources = [
@@ -42,7 +42,7 @@ class News:
     ]
 
     @staticmethod
-    def scrape(deep=False, location='./dumps/news'):
+    def scrape(deep=False, location=location):
         """Update database records for news scraper"""
 
         News.logger.info('Starting News scrape')

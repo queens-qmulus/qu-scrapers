@@ -1,6 +1,6 @@
 """
 quartzscrapers.scrapers.test_scraper
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This module contains the initialization of the test_scraper module.
 This module is used to verify the scraper and dataset generation

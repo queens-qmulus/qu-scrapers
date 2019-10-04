@@ -60,8 +60,8 @@ def make_course_id(year, term, a_lvl, campus, dept, code, delim, is_file=True):
     """
     campus, *_ = campus.split(' ')
 
-    # E.g 1: "Non-Credit" => "Non_Credit" if for files
-    # E.g 2: "Undergraduate Online" => "Undergraduate-Online" for regular id's
+    # E.g. 1: "Non-Credit" => "Non_Credit" if for files.
+    # E.g. 2: "Undergraduate Online" => "Undergraduate-Online" for regular IDs.
     a_lvl = delim.join(a_lvl.replace('-', ' ').split(' '))
 
     if not is_file:

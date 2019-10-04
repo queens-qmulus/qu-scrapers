@@ -106,10 +106,10 @@ class Gazette:
 
         page_url = soup.find('li', 'pager-last').find('a')['href']
 
-        # get last two digits from link of last page, i.e;
-        # '/story/archive/news/2012/?page=13' results in 13
+        # Get last two digits from link of last page, i.e;
+        # '/story/archive/news/2012/?page=13' results in 13.
         index = page_url.rfind('=')
-        num_pages = int(page_url[(index + 1):]) + 1  # +1 to go from 0 to n
+        num_pages = int(page_url[(index + 1):]) + 1  # +1 to go from 0 to n.
 
         return num_pages
 
@@ -128,7 +128,7 @@ class Gazette:
 
         # For alumnireview, there's no published dates due this outlet being
         # an issue-based resource. Parse issue-date year at least for a
-        # date of YYYY-XX-XX
+        # date of YYYY-XX-XX.
         article_issue_dates = [
             article.find('div', class_='story-issue') for article in articles
         ]
@@ -148,24 +148,24 @@ class Gazette:
     def _parse_article_data(article_page, article_url, issue_date, slug):
         title = article_page.find('h1', 'title').text.strip()
 
-        # Find publish date and convert to ISO time standard
+        # Find publish date and convert to ISO time standard.
         published_raw = article_page.find('div', 'story-pub-date')
 
         if published_raw:
             published = published_raw.text.strip()
             published_iso = pendulum.parse(published, strict=False).isoformat()
         else:
-            # no date for AlumniReview. Use issue year
+            # No date for AlumniReview. Use issue year.
             issue_year = re.search(r'\d{4}', issue_date.text).group(0)
             published_iso = pendulum.parse(issue_year).isoformat()
 
-        # Queen's gazette doesn't list authors, they either show an author
-        # or show a team of authors under a team name. Anomalies include
+        # NOTE: Queen's gazette doesn't list authors, they either show an
+        # author or show a team of authors under a team name. Anomalies include
         # showing two authors using 'with', such as 'By John with Alex'.
         # Gazette also includes author title such as 'Alex, Communications'.
-        # Remove job title, and split by ' with ' to create authors array
+        # Remove job title, and split by ' with ' to create authors array.
 
-        # Note: AlumniReview has a mistake of adding typos to their authors,
+        # NOTE: AlumniReview has a mistake of adding typos to their authors,
         # such as "By By Lindy Mechefske"
         authors_raw = (article_page.find('div', 'story-byline')
                        .text.strip().split('By')[-1].strip().split(',')[0])

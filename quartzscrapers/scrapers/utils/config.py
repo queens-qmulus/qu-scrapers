@@ -1,6 +1,6 @@
 """
 quartzscrapers.scrapers.utils.config
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This module contains environment variables retrieved from local .env file
 """

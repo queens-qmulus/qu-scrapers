@@ -1,6 +1,6 @@
 """
 quartzscrapers.scrapers.news.news_helpers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This module contains auxiliary functions for all of the news modules.
 """
@@ -62,7 +62,7 @@ def save_article(scraper, article_data, location):
     title_raw = article_data['url'].split('/')[-1]
 
     # Strip URL of ASCII-encoded characters, such as %20 or '+'.
-    # Full reference list: https://www.w3schools.com/tags/ref_urlencode.asp
+    # Full reference list: https://www.w3schools.com/tags/ref_urlencode.asp.
     title = re.sub(r'(%[a-zA-Z0-9]{2}|[+])', '', title_raw)
     article_filename = '{date}_{title}'.format(date=date, title=title)
 
