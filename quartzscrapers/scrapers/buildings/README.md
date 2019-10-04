@@ -1,4 +1,4 @@
-## Buildings
+## Courses
 
 // TODO: Qmulus sub-logo
 
