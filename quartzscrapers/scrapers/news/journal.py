@@ -27,7 +27,7 @@ class Journal:
     logger = scraper.logger
 
     @staticmethod
-    def scrape(deep=False, location='./dumps/news'):
+    def scrape(deep=False, location='./dumps/news', *args, **kwargs):
         """Scrape information custom to The Queen's Journal.
 
         Args:

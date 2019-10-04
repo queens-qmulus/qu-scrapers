@@ -29,10 +29,13 @@ class Gazette:
 
     @staticmethod
     def scrape(
-            deep=False,
-            location='./dumps/news',
-            relative_url='gazette/stories/all',
-            slug=slug):
+        deep=False,
+        location='./dumps/news',
+        relative_url='gazette/stories/all',
+        slug=slug,
+        *args,
+        **kwargs,
+    ):
         """Scrape information custom to Queen's Gazette.
 
         Args:

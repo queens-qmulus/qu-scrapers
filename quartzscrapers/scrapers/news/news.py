@@ -42,7 +42,7 @@ class News:
     ]
 
     @staticmethod
-    def scrape(deep=False, location=location):
+    def scrape(deep=False, location=location, *args, **kwargs):
         """Update database records for news scraper"""
 
         News.logger.info('Starting News scrape')

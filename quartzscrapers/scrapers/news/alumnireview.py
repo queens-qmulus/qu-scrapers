@@ -17,7 +17,7 @@ class AlumniReview(Gazette):
     slug = 'alumnireview'
 
     @staticmethod
-    def scrape(deep=False, location='./dumps/news'):
+    def scrape(deep=False, location='./dumps/news', *args, **kwargs):
         """Scrape information custom to Queen's Alumni Review.
 
         This is a subcategory under Queen's Gazette.

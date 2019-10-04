@@ -7,19 +7,57 @@ Script to start a scrape session.
 Positional command line arguments:
     argv[1:]: list of modules (indentified by scraper_key) to scrape
 """
+import argparse
 import os
 import time
-import sys
 
 import github
 
 import quartzscrapers as qs
 from quartzscrapers.scrapers.utils.config import GITHUB_TOKEN
 
-TO_SCRAPE = sys.argv[1:]
+parser = argparse.ArgumentParser(description='Initialize scraper jobs.')
+
+parser.add_argument(
+    'scrapers',
+    metavar='scrapers',
+    type=str,
+    nargs='+',
+    help='A set of scraper resources to initiate.',
+)
+
+parser.add_argument(
+    '--repo',
+    help='Define a repository to deposit datasets to.',
+)
+
+parser.add_argument(
+    '--location',
+    help='Filepath for local data dumps.',
+)
+
+parser.add_argument(
+    '--upload',
+    action='store_true',
+    help='Upload datasets to repository.',
+)
+
+parser.add_argument(
+    '--deep',
+    action='store_true',
+    help='Scrapes all News scrapers from all time. For News scrapers only.',
+)
+
+args = parser.parse_args()
+
 ORG = 'queens-qmulus'
-REPO = 'datasets-scraps'
+REPO = args.repo
+TO_SCRAPE = args.scrapers
+LOCATION = args.location
+SHOULD_DEEP_SCRAPE = args.deep
+SHOULD_UPLOAD = args.upload
 SCRAPERS = [
+    qs.Gazette,
     qs.TestScraper,
     qs.Buildings,
     qs.Textbooks,
@@ -28,13 +66,13 @@ SCRAPERS = [
 ]
 
 
-def push_to_github(scraper_name):
+def push_to_github(scraper_name, gh_repo):
     """Aggregate files into one compiled file and automate a push to GitHub.
 
     Args:
         scraper_name: Name of the passed scraper class.
     """
-    repo = github.Github(GITHUB_TOKEN).get_organization(ORG).get_repo(REPO)
+    repo = github.Github(GITHUB_TOKEN).get_organization(ORG).get_repo(gh_repo)
     files = merge_files(scraper_name)
 
     for filename in files:
@@ -129,11 +167,12 @@ for module in SCRAPERS:
     module_start_time = int(time.time())
     print('Starting {} scrape'.format(module.scraper_key))
 
-    module.scrape()
+    module.scrape(location=LOCATION, deep=SHOULD_DEEP_SCRAPE)
 
     module_finish_time = int(time.time())
     print('Finished {} scrape in {} seconds'.format(
         module.scraper_key, module_finish_time - module_start_time))
 
-    # Upload combined dataset to storage.
-    push_to_github(module.scraper_key)
+    # Upload combined dataset to storage, if desired.
+    if SHOULD_UPLOAD:
+        push_to_github(module.scraper_key, REPO)
