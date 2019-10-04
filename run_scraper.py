@@ -22,15 +22,17 @@ SCRAPERS = [
 ]
 
 for module in SCRAPERS:
-    if module.scraper_key in TO_SCRAPE:
-        module_start_time = int(time.time())
-        print('Starting {} scrape'.format(module.scraper_key))
+    if module.scraper_key not in TO_SCRAPE:
+        continue
 
-        module.scrape()
+    module_start_time = int(time.time())
+    print('Starting {} scrape'.format(module.scraper_key))
 
-        module_finish_time = int(time.time())
-        print('Finished {} scrape in {} seconds'.format(
-            module.scraper_key, module_finish_time - module_start_time))
+    module.scrape()
 
-        # TODO: upload metadata and combined dataset to storage
-        #   Take code from tasks.py
+    module_finish_time = int(time.time())
+    print('Finished {} scrape in {} seconds'.format(
+        module.scraper_key, module_finish_time - module_start_time))
+
+    # TODO: upload metadata and combined dataset to storage
+    #   Take code from tasks.py
