@@ -349,6 +349,7 @@ class Textbooks:
         authors = normalize_string(authors) if authors else []
 
         data = {
+            'id': isbn_13,
             'isbn_10': isbn_10,
             'isbn_13': isbn_13,
             'title': title,
