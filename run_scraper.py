@@ -57,7 +57,6 @@ LOCATION = args.location
 SHOULD_DEEP_SCRAPE = args.deep
 SHOULD_UPLOAD = args.upload
 SCRAPERS = [
-    qs.Gazette,
     qs.TestScraper,
     qs.Buildings,
     qs.Textbooks,
