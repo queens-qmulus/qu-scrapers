@@ -26,7 +26,7 @@ class Buildings:
     logger = scraper.logger
 
     @staticmethod
-    def scrape(location=location):
+    def scrape(location=location, *args, **kwargs):
         """Scrape building information to JSON files.
 
         Args:

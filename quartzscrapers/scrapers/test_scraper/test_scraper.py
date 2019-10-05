@@ -21,7 +21,7 @@ class TestScraper:
     logger = scraper.logger
 
     @staticmethod
-    def scrape(location=location):
+    def scrape(location=location, *args, **kwargs):
         """Scrape frontpage titles to JSON files.
 
         Args:

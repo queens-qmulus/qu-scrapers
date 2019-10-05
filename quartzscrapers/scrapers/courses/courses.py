@@ -43,7 +43,7 @@ class Courses:
     LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
     @staticmethod
-    def scrape(location=location):
+    def scrape(location=location, *args, **kwargs):
         """Manage worker scrapers to parse information custom to SOLUS.
 
         Args:
