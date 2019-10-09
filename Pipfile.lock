@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "3c2508b2b786d75eee73b8150710068d5da9975fd987946a97186e514c9a5e99"
+            "sha256": "f47cefb9118fde6e856e4f950c8e3e31e12eb0ea0c9347db0ba78eaa56a05e5d"
         },
         "pipfile-spec": 6,
         "requires": {},
@@ -24,12 +24,11 @@
         },
         "beautifulsoup4": {
             "hashes": [
-                "sha256:05668158c7b85b791c5abde53e50265e16f98ad601c402ba44d70f96c4159612",
-                "sha256:25288c9e176f354bf277c0a10aa96c782a6a18a17122dba2e8cec4a97e03343b",
-                "sha256:f040590be10520f2ea4c2ae8c3dae441c7cfff5308ec9d58a0ec0c1b8f81d469"
+                "sha256:5279c36b4b2ec2cb4298d723791467e3000e5384a43ea0cdf5d45207c7e97169",
+                "sha256:dcdef580e18a76d54002088602eba453eec38ebbcafafeaabd8cab12b6155d57"
             ],
             "index": "pypi",
-            "version": "==4.8.0"
+            "version": "==4.8.1"
         },
         "certifi": {
             "hashes": [
@@ -47,10 +46,10 @@
         },
         "chromedriver-binary": {
             "hashes": [
-                "sha256:96c9a3489c416a24501a50ac4b7e517b3bb14b9849666a7eb07740a2a04b17a7"
+                "sha256:7953486a3609cd0d9984db1734a921b65fe98f788ff962762b63af8980c53f5e"
             ],
             "index": "pypi",
-            "version": "==78.0.3904.11.0"
+            "version": "==77.0.3865.40.0"
         },
         "deprecated": {
             "hashes": [
