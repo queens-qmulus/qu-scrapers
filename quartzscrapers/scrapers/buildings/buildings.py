@@ -26,12 +26,15 @@ class Buildings:
     logger = scraper.logger
 
     @staticmethod
-    def scrape(location=location, *args, **kwargs):
+    def scrape(location='', *args, **kwargs):
         """Scrape building information to JSON files.
 
         Args:
             location (optional): String location of output files.
         """
+        if not location:
+            location = Buildings.location
+
         Buildings.logger.info('Starting Buildings scrape')
 
         campuses = Buildings._get_campuses('campusmap/overall')

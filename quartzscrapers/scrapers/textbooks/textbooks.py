@@ -33,12 +33,15 @@ class Textbooks:
     logger = scraper.logger
 
     @staticmethod
-    def scrape(location=location, *args, **kwargs):
+    def scrape(location='', *args, **kwargs):
         """Scrape textbook information to JSON files.
 
         Args:
             location (optional): String location output files.
         """
+        if not location:
+            location = Textbooks.location
+
         Textbooks.logger.info('Starting Textbooks scrape')
 
         # Course department codes, such as CISC, ANAT, PHAR, etc..
@@ -109,7 +112,7 @@ class Textbooks:
                                 course_data,
                                 textbook_data,
                                 Textbooks.scraper,
-                                location
+                                location,
                             )
 
                         Textbooks.logger.debug('Textbook data saved')

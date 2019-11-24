@@ -43,12 +43,15 @@ class Courses:
     LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
     @staticmethod
-    def scrape(location=Courses.location, *args, **kwargs):
+    def scrape(location='', *args, **kwargs):
         """Manage worker scrapers to parse information custom to SOLUS.
 
         Args:
             location (optional): String location of output files.
         """
+        if not location:
+            location = Courses.location
+
         logger = setup_logging()
 
         logger.info('Starting Courses scrape')
@@ -142,9 +145,15 @@ class CourseSession:
                         # course, E.g: MATH121 offered on campus and online.
                         # Check if table representing academic levels exists.
                         if not self._has_multiple_course_offerings(soup):
-                            title = soup.find(
+
+                            title = ''
+                            title_temp = soup.find(
                                 'span', id='DERIVED_CRSECAT_DESCR200'
-                            ).text.strip()
+                            )
+
+                            if title_temp:
+                                title = title_temp.text.strip()
+
                             self.logger.debug('Course title: %s', title)
 
                             self._navigate_and_parse_course(soup)
@@ -315,6 +324,8 @@ class CourseSession:
         prefs = {'profile.managed_default_content_settings.images': 2}
 
         chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument('--disable-dev-shm-usage')
         chrome_options.add_experimental_option('prefs', prefs)
 
         driver = webdriver.Chrome(chrome_options=chrome_options)
@@ -450,6 +461,7 @@ class CourseSession:
         name = dept_str[name_idx + 2:].strip()
 
         data = {
+            'id': code,
             'code': code,
             'name': name,
         }

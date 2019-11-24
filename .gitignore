@@ -103,7 +103,8 @@ ENV/
 .DS_Store
 
 # data dumps
-dumps/
+archives/
 data/
+dumps/
 
 .vscode/
