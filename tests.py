@@ -1,9 +1,16 @@
-"""Integration tests for qmulus scrapers."""
+"""
+tests
+~~~~~
 
-import unittest
+Integration tests for qmulus scrapers.
+"""
+
 import os
 import json
+import unittest
+
 import quartzscrapers.scrapers.test_scraper as ts
+
 
 class TestScraper(unittest.TestCase):
     """A simple scraper test that provides minimal coverage of

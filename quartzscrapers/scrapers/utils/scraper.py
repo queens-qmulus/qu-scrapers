@@ -1,6 +1,6 @@
 """
 quartzscrapers.scrapers.utils.scraper
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This module contains the base Scraper class, which handle generalized
 functionality for all sup scrapers.
@@ -10,14 +10,14 @@ import os
 import json
 import time
 import logging
-import requests
 
 import backoff
+import requests
 from bs4 import BeautifulSoup
+
 
 class Scraper:
     """Scraper base class. Handle common functions amongst all sub scrapers."""
-
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
@@ -36,17 +36,21 @@ class Scraper:
                            'Chrome/63.0.3239.84 Safari/537.36'),
         }
 
-    # Decorator for retrying HTTP requests. Using exponential backoff
+    # Decorator for retrying HTTP requests. Using exponential backoff.
     @backoff.on_exception(
-        backoff.expo, requests.exceptions.RequestException, max_time=60)
+        backoff.expo,
+        requests.exceptions.RequestException,
+        max_time=60,
+    )
     def http_request(
-            self,
-            url,
-            params=None,
-            cookies=None,
-            headers=None,
-            timeout=60,
-            parse=True):
+        self,
+        url,
+        params=None,
+        cookies=None,
+        headers=None,
+        timeout=60,
+        parse=True,
+    ):
         """Handle HTTP request for a given URL.
 
         Request the given URL, and process as a BeautifulSoup object or as
@@ -73,7 +77,7 @@ class Scraper:
             timeout=timeout,
         )
 
-        # parse the response via BeautifulSoup after detecting its markup
+        # Parse the response via BeautifulSoup after detecting its markup.
         if parse:
             return self._soupify(response)
 
@@ -110,7 +114,7 @@ class Scraper:
                 data_old = json.loads(file.read())
                 data_old[key].append(subdata)
 
-                # rewrite file from line 0
+                # Rewrite file from line 0.
                 file.seek(0)
                 file.write(json.dumps(data_old, indent=2, ensure_ascii=False))
         else:
@@ -149,9 +153,9 @@ class Scraper:
             """"Instantiate BeautifulSoup object"""
             return BeautifulSoup(response.text, parser)
 
-        # XML markup
+        # XML markup.
         if 'xml' in content_type:
             return get_soup('lxml')
 
-        # HTML markup
+        # HTML markup.
         return get_soup('html.parser')

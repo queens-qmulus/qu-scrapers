@@ -1,6 +1,6 @@
 """
 quartzscrapers.scrapers.test_scraper.test_scraper
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This module contains an example scraper that is also used in tests.
 Data from this scraper is not used in the API service.
@@ -8,18 +8,20 @@ Data from this scraper is not used in the API service.
 
 from ..utils import Scraper
 
+
 class TestScraper:
     """An example scraper that scrapes Hacker News. HN was chosen
     since their front page is simple and their markup rarely changes.
     """
 
-    scraper_key = "test_scraper"
+    scraper_key = 'test_scraper'
+    location = './dumps/{}'.format(scraper_key)
     host = 'https://news.ycombinator.com'
     scraper = Scraper()
     logger = scraper.logger
 
     @staticmethod
-    def scrape(location='./dumps/test_scraper'):
+    def scrape(location=location, *args, **kwargs):
         """Scrape frontpage titles to JSON files.
 
         Args:

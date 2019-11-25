@@ -26,7 +26,7 @@ class SmithMagazine:
     logger = scraper.logger
 
     @staticmethod
-    def scrape(deep=False, location='./dumps/news'):
+    def scrape(deep=False, location='./dumps/news', *args, **kwargs):
         """Scrape information custom to Smith Magazine.
 
         Args:
@@ -135,9 +135,9 @@ class SmithMagazine:
     def _parse_article_data(article_page, article_url):
         title = article_page.find('div', 'field-name-title').text.strip()
 
-        # Smith Magazine only shows issue season and year (Winter 217)
+        # Smith Magazine only shows issue season and year (Winter 217).
         # For the sake of news consistency, parse ISO only for the year.
-        # It will always say  January 1st, with the respective year
+        # It will always say 'January 1st', with the respective year
         published = (article_page.find('div', 'field-name-field-issue')
                      .find('div', 'field-item').text.strip())
         published_iso = pendulum.parse(published[-4:]).isoformat()

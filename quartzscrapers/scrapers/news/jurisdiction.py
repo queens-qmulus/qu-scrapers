@@ -23,7 +23,7 @@ class JurisDiction:
     logger = scraper.logger
 
     @staticmethod
-    def scrape(deep=False, location='./dumps/news'):
+    def scrape(deep=False, location='./dumps/news', *args, **kwargs):
         """Scrape information custom to Juris Diction.
 
         Args:
@@ -121,7 +121,7 @@ class JurisDiction:
 
         archive_page = JurisDiction.scraper.http_request(archive_month_url)
 
-        # paginate until we no longer see a 'next' button
+        # Paginate until we no longer see a 'next' button.
         while archive_page.find('a', 'next'):
             archive_page_url = archive_page.find('a', 'next')['href']
             archive_page_urls.append(archive_page_url)
@@ -146,7 +146,7 @@ class JurisDiction:
         title = article_page.find('h1', 'entry-title').text.strip()
 
         # Queen's Juris Diction uses HTML5 element 'time', which already
-        # contains ISO format in 'datetime' attribute
+        # contains ISO format in 'datetime' attribute.
         published_iso = article_page.find(
             'div', class_='vw-post-meta-inner').find('time')['datetime']
 

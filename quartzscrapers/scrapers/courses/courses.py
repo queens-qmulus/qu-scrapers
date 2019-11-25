@@ -11,8 +11,8 @@ from queue import Queue
 from threading import Thread
 from collections import OrderedDict
 
-# Adds chromedriver_binary to path
-import chromedriver_binary  # pylint: disable=unused-import
+# Adds chromedriver_binary to path.
+import chromedriver_binary  # noqa
 import pendulum
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -38,16 +38,20 @@ class Courses:
     its credentials via the cookies returned from a login.
     """
 
-    scraper_key = "courses"
+    scraper_key = 'courses'
+    location = './dumps/{}'.format(scraper_key)
     LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
     @staticmethod
-    def scrape(location='./dumps/courses'):
+    def scrape(location='', *args, **kwargs):
         """Manage worker scrapers to parse information custom to SOLUS.
 
         Args:
             location (optional): String location of output files.
         """
+        if not location:
+            location = Courses.location
+
         logger = setup_logging()
 
         logger.info('Starting Courses scrape')
@@ -105,7 +109,7 @@ class CourseSession:
 
         self.logger.debug('Letter %s has %s depts.', letter, len(departments))
 
-        # For each department under a certain letter search
+        # For each department under a certain letter search.
         for department in departments:
             try:
                 dept_data = self._parse_department_data(department)
@@ -114,7 +118,7 @@ class CourseSession:
                 courses = department.find_all(
                     'tr', id=re.compile('trCOURSE_LIST'))
 
-                # For each course under a certain department
+                # For each course under a certain department.
                 for course in courses:
                     return_state = 'DERIVED_SAA_CRS_RETURN_PB$163$'
 
@@ -133,17 +137,23 @@ class CourseSession:
                             continue
 
                         # Note: Selecting course only takes one parameter,
-                        # which is the ICAction
+                        # which is the ICAction.
                         ic_action = {'ICAction': course_number}
                         soup = self._request_page(ic_action)
 
                         # Some courses have multiple offerings of the same
                         # course, E.g: MATH121 offered on campus and online.
-                        # Check if table representing academic levels exists
+                        # Check if table representing academic levels exists.
                         if not self._has_multiple_course_offerings(soup):
-                            title = soup.find(
+
+                            title = ''
+                            title_temp = soup.find(
                                 'span', id='DERIVED_CRSECAT_DESCR200'
-                            ).text.strip()
+                            )
+
+                            if title_temp:
+                                title = title_temp.text.strip()
+
                             self.logger.debug('Course title: %s', title)
 
                             self._navigate_and_parse_course(soup)
@@ -163,8 +173,8 @@ class CourseSession:
                                     cr_name = academic_level.text.strip()
                                     self.logger.debug('Career: %s', cr_name)
 
-                                    # go from a certain academic level to basic
-                                    # course page
+                                    # Go from a certain academic level to basic
+                                    # course page.
                                     ic_action = {'ICAction': cr_number}
 
                                     soup = self._request_page(ic_action)
@@ -178,7 +188,7 @@ class CourseSession:
                     except Exception:
                         self.scraper.handle_error()
 
-                    # go back to course listing
+                    # Go back to course listing.
                     self.logger.debug('Returning to course list')
                     ic_action = {'ICAction': return_state}
                     self._request_page(ic_action)
@@ -192,15 +202,15 @@ class CourseSession:
 
     def _navigate_and_parse_course(self, soup):
         try:
-            # course parse
+            # Course parse.
             course_data = self._parse_course_data(soup)
             save_course_data(course_data, self.scraper, self.location)
 
-            # section(s) parse
+            # Section(s) parse.
             if not self._has_course_sections(soup):
                 self.logger.debug('No course sections. Skipping deep scrape')
             else:
-                # go to sections page
+                # Go to sections page.
                 ic_action = {'ICAction': 'DERIVED_SAA_CRS_SSR_PB_GO'}
                 soup = self._request_page(ic_action)
 
@@ -246,7 +256,7 @@ class CourseSession:
                                 self.logger.debug(
                                     'Section name: %s', section_name)
 
-                                # go to sections page.
+                                # Go to sections page.
                                 payload.update({'ICAction': section})
                                 section_soup = self._request_page(payload)
                                 section_base_data, section_data = (
@@ -267,7 +277,7 @@ class CourseSession:
                             except Exception:
                                 self.scraper.handle_error()
 
-                            # go back to sections
+                            # Go back to sections.
                             ic_action = {
                                 'ICAction': 'CLASS_SRCH_WRK2_SSR_PB_CLOSE'
                             }
@@ -310,21 +320,23 @@ class CourseSession:
 
         chrome_options = Options()
 
-        # prevent images from loading
+        # Prevent images from loading.
         prefs = {'profile.managed_default_content_settings.images': 2}
 
         chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--no-sandbox')
+        chrome_options.add_argument('--disable-dev-shm-usage')
         chrome_options.add_experimental_option('prefs', prefs)
 
         driver = webdriver.Chrome(chrome_options=chrome_options)
 
-        # timeout to for an element to be found
+        # Timeout to for an element to be found.
         driver.implicitly_wait(30)
         driver.set_page_load_timeout(30)
         driver.get('https://my.queensu.ca')
 
-        # sometimes, Selenium errors out when searching for certain fields.
-        # retry this routines until it succeeds.
+        # Sometimes, Selenium errors out when searching for certain fields.
+        # Retry this routine until it succeeds.
         run_selenium_routine(
             lambda: driver.find_element_by_id('username').send_keys(
                 QUEENS_USERNAME
@@ -392,8 +404,8 @@ class CourseSession:
         return params
 
     def _get_departments(self, soup, letter):
-        # Click and expand a certain letter to see departments
-        # E.G: 'A' has AGHE, ANAT, 'B' has BIOL, BCMP, etc
+        # Click and expand a certain letter to see departments.
+        # E.g.: 'A' has AGHE, ANAT, 'B' has BIOL, BCMP, etc.
         def update_params_and_make_request(soup, ic_action):
             """Update payload with hidden params and request page."""
             payload = self._get_hidden_params(soup)
@@ -402,13 +414,13 @@ class CourseSession:
             soup = self._request_page(payload)
             return soup
 
-        # Get all departments for a certain letter
+        # Get all departments for a certain letter.
         ic_action = {
             'ICAction': 'DERIVED_SSS_BCC_SSR_ALPHANUM_{}'.format(letter)
         }
         soup = update_params_and_make_request(soup, ic_action)
 
-        # Expand all department courses
+        # Expand all department courses.
         ic_action = {'ICAction': 'DERIVED_SSS_BCC_SSS_EXPAND_ALL$97$'}
         soup = update_params_and_make_request(soup, ic_action)
 
@@ -433,7 +445,6 @@ class CourseSession:
         return view_all_tab and 'View All' in view_all_tab
 
     def _get_academic_levels(self, soup):
-        # pylint: disable=unnecessary-comprehension
         return [url for url in soup.find_all('a', id=re.compile(r'CAREER\$'))]
 
     def _parse_department_data(self, department):
@@ -442,14 +453,15 @@ class CourseSession:
 
         self.logger.debug('Department: %s', dept_str)
 
-        # Some departments have more than one hypen such as
-        # "MEI - Entrepreneur & Innov - Masters". Find first index of '-' to
-        # split code from name.
+        # Some departments have more than one hypen, such as
+        # "MEI - Entrepreneur & Innov - Masters".
+        # Find first index of '-' to split code from name.
         name_idx = dept_str.find('-')
         code = dept_str[:name_idx].strip()
         name = dept_str[name_idx + 2:].strip()
 
         data = {
+            'id': code,
             'code': code,
             'name': name,
         }
@@ -457,7 +469,7 @@ class CourseSession:
         return data
 
     def _parse_course_data(self, soup):
-        # All HTML id's used via regular expressions
+        # All HTML IDs used via regular expressions.
         regex_title = re.compile('DERIVED_CRSECAT_DESCR200')
         regex_campus = re.compile('CAMPUS_TBL_DESCR')
         regex_desc = re.compile('SSR_CRSE_OFF_VW_DESCRLONG')
@@ -489,7 +501,7 @@ class CourseSession:
             """Filter description for the course description text only."""
 
             # TODO: Filter different text sections from description, such as
-            # 'NOTE', 'LEARNING HOURS', etc
+            # 'NOTE', 'LEARNING HOURS', etc.
             descr_raw = soup.find('span', id=regex_desc)
 
             if not descr_raw:
@@ -549,12 +561,12 @@ class CourseSession:
 
             ceab_data = {}
             ceab_units = (
-                soup.find('table', id=regex_ceab)  # CEAB table
-                .find_all('tr')[1]  # data is only in 2nd row
-                .find_all('td')[1:]  # first cell is metadata
+                soup.find('table', id=regex_ceab)  # CEAB table.
+                .find_all('tr')[1]  # Data is only in 2nd row.
+                .find_all('td')[1:]  # First cell is metadata.
             )
 
-            # Iteration by twos. Format: Name, Units
+            # Iteration by twos. Format: Name, Units.
             for i in range(0, len(ceab_units), 2):
                 name = ceab_units[i].text.strip().strip(':')
                 units = ceab_units[i + 1].text.strip().strip(':')
@@ -579,23 +591,23 @@ class CourseSession:
         academic_group = soup.find('span', id=regex_ac_grp).text.strip()
         academic_org = soup.find('span', id=regex_ac_org).text.strip()
 
-        # some sections have no campus listed
+        # Some sections have no campus listed.
         campus_raw = soup.find('span', id=regex_campus)
         campus = campus_raw.text.strip() if campus_raw else 'None'
 
-        # course_components is a dict of data
+        # Course_components is a dict of data.
         course_components_rows = soup.find(
             'table', id=regex_crse_cmps).find_all('tr')[1:]
         course_components = create_dict(course_components_rows, 'td', start=1)
 
-        # Note: The following fields potentially could be missing data
+        # NOTE: The following fields potentially could be missing data.
 
         # ======================= Enrollment Information ======================
         enrollment_table = soup.find('table', id=regex_enroll_tbl)
         enrollment_info_rows = enrollment_table.find_all(
             'tr')[1:] if enrollment_table else []
 
-        # Will not exist for 2nd half of full-year courses, like MATH 121B
+        # Will not exist for 2nd half of full-year courses, like MATH 121B.
         enroll_info = create_dict(
             enrollment_info_rows, 'div', tag_id=regex_enroll_div, enroll=True)
 
@@ -624,7 +636,7 @@ class CourseSession:
             'CEAB': ceab_data,
         }
 
-        # retain key-value order of dictionary
+        # Retain key-value order of dictionary.
         return OrderedDict(data)
 
     def _parse_course_section_data(self, soup, basic_data, section_name):
@@ -643,7 +655,7 @@ class CourseSession:
             'span',
             id='DERIVED_CLSRCH_SSS_PAGE_KEYDESCR').text.strip().split(' | ')
 
-        # trims spaces in 'Lecture / Discussion'
+        # Trim spaces in 'Lecture / Discussion'.
         section_type = section_type.replace(' ', '')
         year, term = year_term.split(' ')
         section_number = soup.find(
@@ -655,18 +667,18 @@ class CourseSession:
         # ======================== Meeting Information ========================
         course_dates = []
 
-        # see how many rows of class times there are
+        # See how many rows of class times there are.
         date_rows = soup.find_all(
             'tr', id=re.compile(r'trSSR_CLSRCH_MTG\$[0-9]+_row'))
 
-        # Note: Some rows have dates such as "MoTu 9:30AM - 10:30AM"
+        # Note: Some rows have dates such as "MoTu 9:30AM - 10:30AM".
         for date_row in date_rows:
             days = []
 
-            # some (incorrect) sections will have a missing day, such as a
-            # listing like "12:00AM - 12:00AM" instead of "Mo 8:30AM - 9:30AM"
-            # filter out hyphen to ensure the ordering of start/end indices
-            # are consistent
+            # NOTE: Some (incorrect) sections will have a missing day, such as
+            # listings like "12:00AM - 12:00AM" instead of "Mo 8:30AM - 9:30AM"
+            # Filter out hyphen to ensure the ordering of start/end indices
+            # are consistent.
             date_times = date_row.find(
                 'span', id=re.compile(r'MTG_SCHED\$')
             ).text.strip().replace(' - ', ' ').split(' ')
@@ -674,7 +686,7 @@ class CourseSession:
             if 'TBA' in date_times:
                 start_time = end_time = 'TBA'
             else:
-                # No day is listed. Mark as null
+                # No day is listed. Mark as null.
                 day_str = date_times[0] if len(date_times) > 2 else 'n/a'
                 start_time = parse_datetime(date_times[-2])[1][:5]
                 end_time = parse_datetime(date_times[-1])[1][:5]
@@ -683,7 +695,7 @@ class CourseSession:
                     if day_short in day_str:
                         days.append(day_long)
 
-                # If no day_str exists, mark day as n/a to be flagged later
+                # If no day_str exists, mark day as n/a to be flagged later.
                 if not days:
                     days.append(day_str)
 
@@ -693,10 +705,10 @@ class CourseSession:
                 'span', id=re.compile(r'MTG_INSTR\$')
             ).text.strip().split(', \r')
 
-            # turn "Last,First" into "Last, First"
+            # Turn "Last,First" into "Last, First".
             instructors = [ins.replace(',', ', ') for ins in instructors_raw]
 
-            # start/end dates for a partcular SECTION
+            # Start/end dates for a partcular SECTION.
             meeting_dates = soup.find(
                 'span', id=re.compile(r'MTG_DATE\$')
             ).text.strip().split(' - ')
@@ -724,7 +736,7 @@ class CourseSession:
                 course_dates.append(OrderedDict(course_date))
             else:
                 for day in days:
-                    # flag non-existent day as empty string
+                    # Flag non-existent day as empty string.
                     course_date['day'] = '' if day == 'n/a' else day
                     course_dates.append(OrderedDict(course_date))
 
@@ -752,7 +764,7 @@ class CourseSession:
             if combined_section_number != class_number:
                 combined_with.append(combined_section_number)
 
-        # Used for creating unique ID
+        # Used for creating unique ID.
         code = basic_data.get('course_code', '')
         dept = basic_data.get('department', '')
         a_lvl = basic_data.get('academic_level', '')
