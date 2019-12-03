@@ -1,6 +1,4 @@
-## Courses
-
-// TODO: Qmulus sub-logo
+## Buildings
 
 Resources on every building on Queen's campus.
 

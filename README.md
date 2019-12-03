@@ -1,7 +1,5 @@
 # QU Scrapers: Queen's University Scrapers
 
-// TODO: Qmulus sub-logo
-
 [![Actions Status](https://github.com/queens-qmulus/qu-scrapers/workflows/Python%20application/badge.svg)](https://github.com/queens-qmulus/qu-scrapers/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Gitter](https://img.shields.io/gitter/room/queens-qmulus/community)](https://gitter.im/queens-qmulus/community)

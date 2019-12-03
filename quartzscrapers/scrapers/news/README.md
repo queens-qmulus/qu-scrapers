@@ -1,7 +1,5 @@
 ## News
 
-// TODO: Qmulus sub-logo
-
 Resources on various news outlets relating to Queen's University.
 
 Because this is multiple scrapers masked as one, we'll organize this as sub-scrapers under a main one. The News scraper goes through a list of scrapers to start. All data schemas here are identical.

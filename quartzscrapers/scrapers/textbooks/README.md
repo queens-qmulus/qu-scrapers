@@ -1,7 +1,5 @@
 ## Textbooks
 
-// TODO: Qmulus sub-logo
-
 Resources on every textbook offered at Queen’s. Note that this resource refreshes its information annually.
 
 ##### Resource Link
