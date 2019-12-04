@@ -60,3 +60,6 @@ When your changes are ready, open a PR against the `develop` branch. Some things
 - Add one of the project maintainers to your PR, we'll aim to review your PR within one day.
 
 Currently, there is no schedule for production deployments but your changes will likely be deployed within the week.
+
+Scrapers and datasets are also run and uploaded manually for the time being. If you have a new scraper or scraper changes you want in effect,
+contact the maintainers and they will manually run these jobs.
